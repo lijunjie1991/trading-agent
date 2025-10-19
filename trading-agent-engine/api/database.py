@@ -18,18 +18,22 @@ DB_NAME = os.getenv("DB_NAME", "tradingagent")
 DB_USERNAME = os.getenv("DB_USERNAME", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "123456")
 
-
-
 # Create database URL
 DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
-print(f"DATABASE_URL:{DATABASE_URL}")
+
+print(f"Connecting to: mysql+pymysql://{DB_USERNAME}:***@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
 # Create engine
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,  # 验证连接有效性
-    pool_recycle=3600,   # 每小时回收连接
-    echo=False           # 生产环境关闭SQL日志
+    pool_pre_ping=True,      # 验证连接有效性
+    pool_recycle=3600,       # 每小时回收连接
+    pool_size=5,             # 连接池大小
+    max_overflow=10,         # 最大溢出连接数
+    echo=False,              # 生产环境关闭SQL日志
+    connect_args={
+        "connect_timeout": 10,  # 连接超时10秒
+    }
 )
 
 # Create session factory

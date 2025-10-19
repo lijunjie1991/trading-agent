@@ -112,9 +112,10 @@ def get_task_by_uuid(task_id: str):
 def test_connection():
     """测试数据库连接"""
     try:
+        from sqlalchemy import text
         db = get_db_session()
         # 执行简单查询
-        result = db.execute("SELECT 1").fetchone()
+        result = db.execute(text("SELECT 1")).fetchone()
         db.close()
         print("✅ Database connection successful!")
         return True
