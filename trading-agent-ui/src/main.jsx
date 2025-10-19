@@ -21,13 +21,11 @@ const theme = {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <BrowserRouter>
-        <ConfigProvider theme={theme}>
-          <App />
-        </ConfigProvider>
-      </BrowserRouter>
-    </Provider>
-  </React.StrictMode>,
+  <Provider store={store}>
+    <BrowserRouter>
+      <ConfigProvider theme={theme}>
+        <App />
+      </ConfigProvider>
+    </BrowserRouter>
+  </Provider>,
 )

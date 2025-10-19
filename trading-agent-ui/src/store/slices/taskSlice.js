@@ -183,7 +183,8 @@ const taskSlice = createSlice({
     })
     builder.addCase(startAnalysis.fulfilled, (state, action) => {
       state.submitting = false
-      state.currentTaskId = action.payload.task_id
+      // Backend uses taskId (camelCase), not task_id
+      state.currentTaskId = action.payload.taskId || action.payload.task_id
       state.currentTask = action.payload
       state.agentStatuses = initializeAgentStatuses()
       state.error = null
@@ -215,7 +216,8 @@ const taskSlice = createSlice({
     })
     builder.addCase(fetchTasks.fulfilled, (state, action) => {
       state.loading = false
-      state.tasks = action.payload.tasks || action.payload
+      // Backend returns array directly in data field
+      state.tasks = Array.isArray(action.payload) ? action.payload : (action.payload.tasks || action.payload)
       state.error = null
     })
     builder.addCase(fetchTasks.rejected, (state, action) => {

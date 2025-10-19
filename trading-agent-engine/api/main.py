@@ -22,7 +22,17 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from dotenv import load_dotenv
 
+# 导入数据库服务
+from db_service import update_task_status, save_report, test_connection
+
 load_dotenv()
+
+# 测试数据库连接
+print("🔄 Testing database connection...")
+if test_connection():
+    print("✅ Database ready!")
+else:
+    print("⚠️ Database connection failed, please check configuration")
 
 # ==================== 数据模型定义 ====================
 
@@ -152,9 +162,6 @@ app.add_middleware(
 # WebSocket管理器
 manager = ConnectionManager()
 
-# 任务存储(生产环境应该使用数据库)
-tasks_db: Dict[str, Dict] = {}
-
 # 线程池执行器 (用于真正的后台异步执行)
 from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor(max_workers=4)  # 支持4个并发任务
@@ -200,8 +207,8 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
     report_count = 0
 
     try:
-        # 更新任务状态
-        tasks_db[task_id]["status"] = TaskStatus.RUNNING
+        # 更新任务状态到数据库
+        update_task_status(task_id, "RUNNING")
 
         send_progress_sync(task_id, "status", {
             "status": "running",
@@ -353,24 +360,19 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                         }
                     })
 
-                    # 保存到任务数据
-                    if "reports" not in tasks_db[task_id]:
-                        tasks_db[task_id]["reports"] = {}
-                    tasks_db[task_id]["reports"][report_type] = chunk[report_type]
+                    # 保存报告到数据库
+                    save_report(task_id, report_type, chunk[report_type])
 
         print(f"✅ 分析完成,共处理 {chunk_count} 个chunk")
 
         # 获取最终决策
         if final_chunk and "final_trade_decision" in final_chunk:
             decision = ta.process_signal(final_chunk["final_trade_decision"])
-            tasks_db[task_id]["final_decision"] = decision
-            tasks_db[task_id]["final_state"] = final_chunk
         else:
             decision = "UNKNOWN"
 
-        # 更新任务状态为完成
-        tasks_db[task_id]["status"] = TaskStatus.COMPLETED
-        tasks_db[task_id]["completed_at"] = datetime.now().isoformat()
+        # 更新任务状态为完成（写入数据库）
+        update_task_status(task_id, "COMPLETED", final_decision=decision)
 
         send_progress_sync(task_id, "status", {
             "status": "completed",
@@ -389,9 +391,8 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
         import traceback
         traceback.print_exc()
 
-        tasks_db[task_id]["status"] = TaskStatus.FAILED
-        tasks_db[task_id]["error_message"] = str(e)
-        tasks_db[task_id]["completed_at"] = datetime.now().isoformat()
+        # 更新任务状态为失败（写入数据库）
+        update_task_status(task_id, "FAILED", error_message=str(e))
 
         send_progress_sync(task_id, "status", {
             "status": "failed",
@@ -421,11 +422,19 @@ async def root():
 @app.get("/api/v1/health", tags=["健康检查"])
 async def health_check():
     """健康检查"""
+    from database import get_db_session, Task
+
+    db = get_db_session()
+    try:
+        active_tasks = db.query(Task).filter(Task.status.in_(["PENDING", "RUNNING"])).count()
+    finally:
+        db.close()
+
     return {
         "status": "healthy",
         "service": "TradingAgents API",
         "timestamp": datetime.now().isoformat(),
-        "active_tasks": len(tasks_db),
+        "active_tasks": active_tasks,
         "active_websockets": len(manager.active_connections)
     }
 
@@ -435,6 +444,7 @@ async def start_analysis(
 ):
     """
     启动新的分析任务
+    注意：此端点仅用于 Python 内部测试，实际应该由 Java 端调用
 
     - **ticker**: 股票代码,如 NVDA, AAPL, TSLA
     - **analysis_date**: 分析日期,格式 YYYY-MM-DD
@@ -443,21 +453,6 @@ async def start_analysis(
     """
     # 生成任务ID
     task_id = str(uuid.uuid4())
-
-    # 创建任务记录
-    tasks_db[task_id] = {
-        "task_id": task_id,
-        "status": TaskStatus.PENDING,
-        "ticker": request.ticker,
-        "analysis_date": request.analysis_date,
-        "selected_analysts": [a.value for a in request.selected_analysts],
-        "research_depth": request.research_depth,
-        "created_at": datetime.now().isoformat(),
-        "reports": {},
-        "final_decision": None,
-        "completed_at": None,
-        "error_message": None
-    }
 
     # 使用线程池异步执行任务 (真正的并发)
     loop = asyncio.get_event_loop()
@@ -469,63 +464,106 @@ async def start_analysis(
         task_id=task_id,
         status=TaskStatus.PENDING,
         message=f"分析任务已创建: {request.ticker}",
-        created_at=tasks_db[task_id]["created_at"]
+        created_at=datetime.now().isoformat()
     )
 
 @app.get("/api/v1/analysis/{task_id}", response_model=TaskDetailResponse, tags=["分析"])
 async def get_task_detail(task_id: str):
     """
-    获取任务详情
+    获取任务详情（从数据库读取）
     """
-    if task_id not in tasks_db:
+    from db_service import get_task_by_uuid
+    import json
+
+    task = get_task_by_uuid(task_id)
+    if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
-    task = tasks_db[task_id]
+    # 解析 JSON 字段
+    selected_analysts = json.loads(task.selected_analysts) if task.selected_analysts else []
 
     return TaskDetailResponse(
-        task_id=task["task_id"],
-        status=task["status"],
-        ticker=task["ticker"],
-        analysis_date=task["analysis_date"],
-        selected_analysts=task["selected_analysts"],
-        research_depth=task["research_depth"],
-        final_decision=task.get("final_decision"),
-        created_at=task["created_at"],
-        completed_at=task.get("completed_at"),
-        error_message=task.get("error_message")
+        task_id=task.task_id,
+        status=task.status,
+        ticker=task.ticker,
+        analysis_date=task.analysis_date.strftime("%Y-%m-%d"),
+        selected_analysts=selected_analysts,
+        research_depth=task.research_depth,
+        final_decision=task.final_decision,
+        created_at=task.created_at.isoformat(),
+        completed_at=task.completed_at.isoformat() if task.completed_at else None,
+        error_message=task.error_message
     )
 
 @app.get("/api/v1/analysis/{task_id}/reports", tags=["分析"])
 async def get_task_reports(task_id: str):
     """
-    获取任务的所有报告
+    获取任务的所有报告（从数据库读取）
     """
-    if task_id not in tasks_db:
+    from db_service import get_task_by_uuid
+    from database import get_db_session, Report
+
+    task = get_task_by_uuid(task_id)
+    if not task:
         raise HTTPException(status_code=404, detail="任务不存在")
 
-    return {
-        "task_id": task_id,
-        "status": tasks_db[task_id]["status"],
-        "reports": tasks_db[task_id].get("reports", {})
-    }
+    # 获取报告
+    db = get_db_session()
+    try:
+        reports = db.query(Report).filter(Report.task_id == task.id).all()
+        reports_dict = {}
+        for report in reports:
+            reports_dict[report.report_type] = report.content
+        return {
+            "task_id": task_id,
+            "status": task.status,
+            "reports": reports_dict
+        }
+    finally:
+        db.close()
 
 @app.get("/api/v1/tasks", tags=["分析"])
 async def list_tasks(status: Optional[TaskStatus] = None, limit: int = 20):
     """
-    列出所有任务
+    列出所有任务（从数据库读取）
+    注意：此端点返回 Python 内部数据，Java 端应使用自己的 API
     """
-    tasks = list(tasks_db.values())
+    from database import get_db_session, Task
+    import json
 
-    if status:
-        tasks = [t for t in tasks if t["status"] == status]
+    db = get_db_session()
+    try:
+        query = db.query(Task)
 
-    # 按创建时间倒序
-    tasks.sort(key=lambda x: x["created_at"], reverse=True)
+        if status:
+            query = query.filter(Task.status == status.value.upper())
 
-    return {
-        "total": len(tasks),
-        "tasks": tasks[:limit]
-    }
+        # 按创建时间倒序
+        query = query.order_by(Task.created_at.desc()).limit(limit)
+        tasks = query.all()
+
+        task_list = []
+        for task in tasks:
+            selected_analysts = json.loads(task.selected_analysts) if task.selected_analysts else []
+            task_list.append({
+                "task_id": task.task_id,
+                "status": task.status,
+                "ticker": task.ticker,
+                "analysis_date": task.analysis_date.strftime("%Y-%m-%d"),
+                "selected_analysts": selected_analysts,
+                "research_depth": task.research_depth,
+                "final_decision": task.final_decision,
+                "created_at": task.created_at.isoformat(),
+                "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+                "error_message": task.error_message
+            })
+
+        return {
+            "total": len(task_list),
+            "tasks": task_list
+        }
+    finally:
+        db.close()
 
 @app.websocket("/ws/analysis/{task_id}")
 async def websocket_endpoint(websocket: WebSocket, task_id: str):
@@ -560,8 +598,7 @@ if __name__ == "__main__":
     ╔═══════════════════════════════════════════════════════════╗
     ║         TradingAgents FastAPI Service                     ║
     ║                                                           ║
-    ║  API 文档: http://localhost:8000/docs                     ║
-    ║  健康检查: http://localhost:8000/api/v1/health           ║
+    ║         http://localhost:8000/docs                        ║
     ║                                                           ║
     ╚═══════════════════════════════════════════════════════════╝
     """)

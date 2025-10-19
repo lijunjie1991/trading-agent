@@ -9,7 +9,15 @@ const TaskCard = ({ task }) => {
   const navigate = useNavigate()
 
   const handleViewDetails = () => {
-    navigate(`/tasks/${task.task_id}`)
+    // Backend uses taskId (camelCase)
+    const taskId = task.taskId || task.task_id
+    console.log('TaskCard - Navigating to task:', task)
+    console.log('TaskCard - taskId:', taskId)
+    if (!taskId) {
+      console.error('TaskCard - Missing taskId!', task)
+      return
+    }
+    navigate(`/tasks/${taskId}`)
   }
 
   return (
@@ -28,7 +36,7 @@ const TaskCard = ({ task }) => {
               {task.ticker}
             </Title>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              ID: {truncateTaskId(task.task_id)}
+              ID: {truncateTaskId(task.taskId || task.task_id)}
             </Text>
           </div>
           <Tag color={getStatusColor(task.status)} style={{ marginLeft: 8 }}>
@@ -38,20 +46,20 @@ const TaskCard = ({ task }) => {
 
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
           <Text type="secondary">
-            <ClockCircleOutlined /> {formatDateTime(task.created_at)}
+            <ClockCircleOutlined /> {formatDateTime(task.createdAt || task.created_at)}
           </Text>
           <Text type="secondary">
-            Analysts: {task.selected_analysts?.join(', ') || 'N/A'}
+            Analysts: {task.selectedAnalysts?.join(', ') || task.selected_analysts?.join(', ') || 'N/A'}
           </Text>
           <Text type="secondary">
-            Research Depth: {task.research_depth || 1}
+            Research Depth: {task.researchDepth || task.research_depth || 1}
           </Text>
         </Space>
 
-        {task.decision && (
+        {(task.finalDecision || task.final_decision || task.decision) && (
           <div>
-            <Tag color={getDecisionBadgeStatus(task.decision)} style={{ fontSize: 13 }}>
-              Decision: {task.decision}
+            <Tag color={getDecisionBadgeStatus(task.finalDecision || task.final_decision || task.decision)} style={{ fontSize: 13 }}>
+              Decision: {task.finalDecision || task.final_decision || task.decision}
             </Tag>
           </div>
         )}

@@ -1,7 +1,5 @@
 package com.tradingagent.service.websocket;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tradingagent.service.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,13 +12,16 @@ import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * WebSocket Proxy Handler
+ *
+ * 职责：仅负责在前端和 Python 服务之间转发 WebSocket 消息
+ * 数据持久化：由 Python 端直接写入数据库
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class WebSocketProxyHandler extends TextWebSocketHandler {
-
-    private final TaskService taskService;
-    private final ObjectMapper objectMapper;
 
     @Value("${python.service.websocket.base-url}")
     private String pythonWebSocketBaseUrl;
@@ -43,33 +44,11 @@ public class WebSocketProxyHandler extends TextWebSocketHandler {
         WebSocketHandler pythonHandler = new TextWebSocketHandler() {
             @Override
             protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-                // Forward message from Python to client
+                // Simply forward message from Python to frontend client
+                // Data persistence is now handled by Python service directly writing to database
                 if (clientSession.isOpen()) {
                     clientSession.sendMessage(message);
-
-                    // Parse message and save to database
-                    try {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> data = objectMapper.readValue(message.getPayload(), Map.class);
-                        String type = (String) data.get("type");
-
-                        if ("report".equals(type)) {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> reportData = (Map<String, Object>) data.get("data");
-                            String reportType = (String) reportData.get("report_type");
-                            String content = (String) reportData.get("content");
-                            taskService.saveReport(taskId, reportType, content);
-                        } else if ("status".equals(type)) {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> statusData = (Map<String, Object>) data.get("data");
-                            String status = (String) statusData.get("status");
-                            String finalDecision = (String) statusData.get("decision");
-                            String errorMessage = (String) statusData.get("error");
-                            taskService.updateTaskStatus(taskId, status.toUpperCase(), finalDecision, errorMessage);
-                        }
-                    } catch (Exception e) {
-                        log.error("Error processing WebSocket message", e);
-                    }
+                    log.debug("Forwarded message from Python to client for task: {}", taskId);
                 }
             }
 

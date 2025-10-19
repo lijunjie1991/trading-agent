@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   START_ANALYSIS: '/api/v1/tasks',
   GET_TASK: '/api/v1/tasks/:taskId',
   LIST_TASKS: '/api/v1/tasks',
+  GET_TASK_REPORTS: '/api/v1/tasks/:taskId/reports',
   CANCEL_TASK: '/api/v1/tasks/:taskId/cancel',
 
   // WebSocket

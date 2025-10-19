@@ -196,12 +196,12 @@ const TaskDetail = () => {
               <Title level={3} style={{ margin: 0 }}>
                 {currentTask?.ticker || 'N/A'}
               </Title>
-              <Text type="secondary">Task ID: {truncateTaskId(taskId)}</Text>
+              <Text type="secondary">Task ID: {truncateTaskId(currentTask?.taskId || taskId)}</Text>
               <Text type="secondary">
-                Created: {currentTask?.created_at ? formatDateTime(currentTask.created_at) : 'N/A'}
+                Created: {currentTask?.createdAt ? formatDateTime(currentTask.createdAt) : currentTask?.created_at ? formatDateTime(currentTask.created_at) : 'N/A'}
               </Text>
               <Text type="secondary">
-                Analysts: {currentTask?.selected_analysts?.join(', ') || 'N/A'}
+                Analysts: {currentTask?.selectedAnalysts?.join(', ') || currentTask?.selected_analysts?.join(', ') || 'N/A'}
               </Text>
             </Space>
           </Col>

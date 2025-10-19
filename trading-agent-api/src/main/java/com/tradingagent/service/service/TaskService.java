@@ -79,9 +79,9 @@ public class TaskService {
                 .collect(Collectors.toList());
     }
 
-    public TaskResponse getTaskById(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND));
+    public TaskResponse getTaskById(String taskId) {
+        Task task = taskRepository.findByTaskId(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
 
         User currentUser = authService.getCurrentUser();
         if (!task.getUser().getId().equals(currentUser.getId())) {
@@ -91,16 +91,16 @@ public class TaskService {
         return toTaskResponse(task);
     }
 
-    public List<Map<String, Object>> getTaskReports(Long taskId) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND));
+    public List<Map<String, Object>> getTaskReports(String taskId) {
+        Task task = taskRepository.findByTaskId(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
 
         User currentUser = authService.getCurrentUser();
         if (!task.getUser().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
         }
 
-        List<Report> reports = reportRepository.findByTaskIdOrderByCreatedAtAsc(taskId);
+        List<Report> reports = reportRepository.findByTaskIdOrderByCreatedAtAsc(task.getId());
         return reports.stream()
                 .map(report -> {
                     Map<String, Object> map = new java.util.HashMap<>();
@@ -133,34 +133,28 @@ public class TaskService {
         return stats;
     }
 
+    // ==================== 已废弃的方法 ====================
+    // 以下方法已不再使用，因为 Python 服务直接写入数据库
+    // 保留这些方法仅为了向后兼容，实际数据由 Python 端维护
+
+    /**
+     * @deprecated Python 服务直接写入数据库，此方法已废弃
+     */
+    @Deprecated
     @Transactional
     public void updateTaskStatus(String taskId, String status, String finalDecision, String errorMessage) {
-        Task task = taskRepository.findByTaskId(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
-
-        task.setStatus(status);
-        task.setFinalDecision(finalDecision);
-        task.setErrorMessage(errorMessage);
-
-        if ("COMPLETED".equals(status) || "FAILED".equals(status)) {
-            task.setCompletedAt(LocalDateTime.now());
-        }
-
-        taskRepository.save(task);
+        log.warn("updateTaskStatus is deprecated - Python service writes to DB directly");
+        // 保留空实现，避免调用报错
     }
 
+    /**
+     * @deprecated Python 服务直接写入数据库，此方法已废弃
+     */
+    @Deprecated
     @Transactional
     public void saveReport(String taskId, String reportType, String content) {
-        Task task = taskRepository.findByTaskId(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
-
-        Report report = Report.builder()
-                .task(task)
-                .reportType(reportType)
-                .content(content)
-                .build();
-
-        reportRepository.save(report);
+        log.warn("saveReport is deprecated - Python service writes to DB directly");
+        // 保留空实现，避免调用报错
     }
 
     private TaskResponse toTaskResponse(Task task) {

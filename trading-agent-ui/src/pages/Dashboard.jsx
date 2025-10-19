@@ -134,7 +134,7 @@ const Dashboard = () => {
         ) : (
           <Row gutter={[16, 16]}>
             {tasks.map((task) => (
-              <Col xs={24} sm={12} md={8} lg={6} key={task.task_id}>
+              <Col xs={24} sm={12} md={8} lg={6} key={task.taskId || task.task_id || task.id}>
                 <TaskCard task={task} />
               </Col>
             ))}

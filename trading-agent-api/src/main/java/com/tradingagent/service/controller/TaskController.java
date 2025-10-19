@@ -32,13 +32,13 @@ public class TaskController {
     }
 
     @GetMapping("/{taskId}")
-    public ResponseEntity<Result<TaskResponse>> getTaskById(@PathVariable Long taskId) {
+    public ResponseEntity<Result<TaskResponse>> getTaskById(@PathVariable String taskId) {
         TaskResponse response = taskService.getTaskById(taskId);
         return ResponseEntity.ok(Result.success(response));
     }
 
     @GetMapping("/{taskId}/reports")
-    public ResponseEntity<Result<List<Map<String, Object>>>> getTaskReports(@PathVariable Long taskId) {
+    public ResponseEntity<Result<List<Map<String, Object>>>> getTaskReports(@PathVariable String taskId) {
         List<Map<String, Object>> reports = taskService.getTaskReports(taskId);
         return ResponseEntity.ok(Result.success(reports));
     }

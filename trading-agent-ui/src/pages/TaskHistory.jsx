@@ -35,6 +35,7 @@ const TaskHistory = () => {
       filtered = filtered.filter(
         (task) =>
           task.ticker?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          task.taskId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           task.task_id?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
@@ -117,7 +118,7 @@ const TaskHistory = () => {
       ) : (
         <Row gutter={[16, 16]}>
           {filteredTasks.map((task) => (
-            <Col xs={24} sm={12} md={8} lg={6} key={task.task_id}>
+            <Col xs={24} sm={12} md={8} lg={6} key={task.taskId || task.task_id || task.id}>
               <TaskCard task={task} />
             </Col>
           ))}

@@ -4,10 +4,10 @@ spring:
 
   # MySQL Database Configuration (Production)
   datasource:
-    url: jdbc:mysql://localhost:3306/tradingagent?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://hamsa-db-dev.mysql.database.azure.com:3306/tradingagent?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    username: ${DB_USERNAME:hamsa}
+    password: ${DB_PASSWORD:dev@2023}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
@@ -39,9 +39,9 @@ jwt:
 # Python Service Configuration
 python:
   service:
-    url: ${PYTHON_SERVICE_URL:http://localhost:8000}
+    url: ${PYTHON_SERVICE_URL:http://98.82.131.247:8000}
     websocket:
-      base-url: ${PYTHON_WS_URL:ws://localhost:8000/ws/analysis}
+      base-url: ${PYTHON_WS_URL:ws://98.82.131.247:8000/ws/analysis}
 
 # Server Configuration
 server:

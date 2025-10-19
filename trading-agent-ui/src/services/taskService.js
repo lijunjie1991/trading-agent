@@ -15,7 +15,8 @@ class TaskService {
       selectedAnalysts: taskData.selectedAnalysts,
       researchDepth: taskData.researchDepth,
     })
-    return response.data
+    // Backend returns: { code, message, data, timestamp }
+    return response.data.data || response.data
   }
 
   /**
@@ -24,7 +25,8 @@ class TaskService {
   async getTask(taskId) {
     const url = parseApiUrl(API_ENDPOINTS.GET_TASK, { taskId })
     const response = await api.get(url)
-    return response.data
+    // Backend returns: { code, message, data, timestamp }
+    return response.data.data || response.data
   }
 
   /**
@@ -32,7 +34,8 @@ class TaskService {
    */
   async listTasks(params = {}) {
     const response = await api.get(API_ENDPOINTS.LIST_TASKS, { params })
-    return response.data
+    // Backend returns: { code, message, data: [...], timestamp }
+    return response.data.data || response.data
   }
 
   /**
