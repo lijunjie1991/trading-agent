@@ -28,6 +28,12 @@ DATABASE_URL = f"mysql+pymysql://{encoded_username}:{encoded_password}@{DB_HOST}
 
 print(f"Connecting to: mysql+pymysql://{DB_USERNAME}:***@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
+# SSL configuration for Azure MySQL
+connect_args = {"connect_timeout": 10}
+if "azure.com" in DB_HOST:
+    # Azure MySQL requires SSL
+    connect_args["ssl"] = {"ssl_mode": "REQUIRED"}
+
 # Create engine
 engine = create_engine(
     DATABASE_URL,
@@ -36,9 +42,7 @@ engine = create_engine(
     pool_size=5,             # 连接池大小
     max_overflow=10,         # 最大溢出连接数
     echo=False,              # 生产环境关闭SQL日志
-    connect_args={
-        "connect_timeout": 10,  # 连接超时10秒
-    }
+    connect_args=connect_args
 )
 
 # Create session factory
