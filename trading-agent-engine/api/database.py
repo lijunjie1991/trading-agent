@@ -7,6 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import os
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,8 +19,12 @@ DB_NAME = os.getenv("DB_NAME", "tradingagent")
 DB_USERNAME = os.getenv("DB_USERNAME", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "123456")
 
+# URL encode username and password to handle special characters
+encoded_username = quote_plus(DB_USERNAME)
+encoded_password = quote_plus(DB_PASSWORD)
+
 # Create database URL
-DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+DATABASE_URL = f"mysql+pymysql://{encoded_username}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
 print(f"Connecting to: mysql+pymysql://{DB_USERNAME}:***@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
