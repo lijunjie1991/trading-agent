@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: trading-agent
+
+  # MySQL Database Configuration (Production)
+  datasource:
+    url: jdbc:mysql://localhost:3306/tradingagent?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: none  # Disable auto DDL in production
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Liquibase Configuration
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+    default-schema: tradingagent
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:your-production-secret-key-must-be-at-least-256-bits-long-change-this}
+  expiration: 86400000  # 24 hours in milliseconds
+
+# Python Service Configuration
+python:
+  service:
+    url: ${PYTHON_SERVICE_URL:http://localhost:8000}
+    websocket:
+      base-url: ${PYTHON_WS_URL:ws://localhost:8000/ws/analysis}
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+
+# CORS Configuration
+cors:
+  allowedOrigins:
+    - ${CORS_ORIGIN_1:http://localhost:3000}
+    - ${CORS_ORIGIN_2:http://localhost:5173}
+  allowedMethods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowedHeaders:
+    - "*"
+  allowCredentials: true
+
+# Logging Configuration
+# Detailed logging configuration is in logback-spring.xml
+logging:
+  config: classpath:logback-spring.xml
