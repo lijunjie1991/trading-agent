@@ -18,10 +18,11 @@ DB_NAME = os.getenv("DB_NAME", "tradingagent")
 DB_USERNAME = os.getenv("DB_USERNAME", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "123456")
 
-print(f"{DB_HOST}")
+
 
 # Create database URL
 DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
+print(f"DATABASE_URL:{DATABASE_URL}")
 
 # Create engine
 engine = create_engine(
