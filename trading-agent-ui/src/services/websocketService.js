@@ -23,9 +23,16 @@ class WebSocketService {
    * Connect to WebSocket
    */
   connect(taskId) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.warn('WebSocket already connected')
-      return
+    // Check if already connected or connecting
+    if (this.ws) {
+      if (this.ws.readyState === WebSocket.OPEN) {
+        console.warn('WebSocket already connected')
+        return
+      }
+      if (this.ws.readyState === WebSocket.CONNECTING) {
+        console.warn('WebSocket connection in progress')
+        return
+      }
     }
 
     this.url = `${WS_BASE_URL}/ws/analysis/${taskId}`
@@ -40,6 +47,11 @@ class WebSocketService {
    */
   _createConnection() {
     try {
+      // Close existing connection if any
+      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+        this.ws.close()
+      }
+
       this.ws = new WebSocket(this.url)
 
       this.ws.onopen = (event) => {
@@ -68,8 +80,11 @@ class WebSocketService {
         this._stopHeartbeat()
         this.closeHandlers.forEach((handler) => handler(event))
 
-        // Attempt to reconnect if not manually closed
-        if (!this.isManualClose) {
+        // Only reconnect if:
+        // 1. Not manually closed
+        // 2. Connection was abnormally closed (code !== 1000)
+        // Normal closure (1000) means server intentionally closed, don't reconnect
+        if (!this.isManualClose && event.code !== 1000) {
           this._attemptReconnect()
         }
       }

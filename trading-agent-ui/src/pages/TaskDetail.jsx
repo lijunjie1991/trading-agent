@@ -61,7 +61,6 @@ const TaskDetail = () => {
 
     const unsubscribeClose = websocketService.onClose(() => {
       setIsConnected(false)
-      message.info('Disconnected from real-time updates')
     })
 
     const unsubscribeError = websocketService.onError(() => {
