@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch, useSelector, useStore } from 'react-redux'
 import { Card, Row, Col, Button, Typography, Space, Tag, Descriptions } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
@@ -24,6 +24,7 @@ const TaskDetail = () => {
   const { taskId } = useParams()
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const store = useStore()
   const pollingIntervalRef = useRef(null)
   const [initialLoading, setInitialLoading] = useState(true)
 
@@ -57,13 +58,14 @@ const TaskDetail = () => {
 
     // Poll every 2 seconds
     pollingIntervalRef.current = setInterval(() => {
-      // Always poll for messages
-      dispatch(fetchTaskMessages({ taskId, lastTimestamp }))
+      // Get the latest lastTimestamp from Redux store to avoid closure stale state
+      const currentLastTimestamp = store.getState().task.lastTimestamp
 
-      // Also refresh task status if still running
-      if (currentTask?.status === 'PENDING' || currentTask?.status === 'RUNNING') {
-        dispatch(fetchTask(taskId))
-      }
+      // Always poll for messages with the latest timestamp
+      dispatch(fetchTaskMessages({ taskId, lastTimestamp: currentLastTimestamp }))
+
+      // Always refresh task status to get latest updates
+      dispatch(fetchTask(taskId))
     }, 2000)
   }
 

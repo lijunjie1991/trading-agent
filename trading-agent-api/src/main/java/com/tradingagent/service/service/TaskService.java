@@ -161,15 +161,22 @@ public class TaskService {
 
         List<TaskMessage> messages;
         if (lastTimestamp != null && !lastTimestamp.isEmpty()) {
-            // 增量查询：只获取新消息
-            // Parse ISO 8601 format with timezone (e.g., "2025-10-20T14:14:35.000Z")
-            LocalDateTime timestamp = OffsetDateTime.parse(lastTimestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                    .toLocalDateTime();
-            messages = taskMessageRepository.findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtAsc(
+            // 增量查询：只获取新消息（降序，最新的在前面）
+            // Parse ISO 8601 format (with or without timezone)
+            LocalDateTime timestamp;
+            try {
+                // Try parsing with timezone first (e.g., "2025-10-20T14:14:35.000Z")
+                timestamp = OffsetDateTime.parse(lastTimestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        .toLocalDateTime();
+            } catch (Exception e) {
+                // Fall back to parsing without timezone (e.g., "2025-10-20T14:14:35")
+                timestamp = LocalDateTime.parse(lastTimestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            }
+            messages = taskMessageRepository.findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtDesc(
                     task.getId(), timestamp);
         } else {
-            // 全量查询：获取所有消息
-            messages = taskMessageRepository.findByTaskIdOrderByCreatedAtAsc(task.getId());
+            // 全量查询：获取所有消息（降序，最新的在前面）
+            messages = taskMessageRepository.findByTaskIdOrderByCreatedAtDesc(task.getId());
         }
 
         return messages.stream()

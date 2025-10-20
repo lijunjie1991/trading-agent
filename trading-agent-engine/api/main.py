@@ -195,6 +195,9 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
         chunk_count = 0
         final_chunk = None
 
+        # 消息去重：记录已处理的消息ID
+        processed_message_ids = set()
+
         for chunk in ta.graph.stream(init_state, **args):
             chunk_count += 1
             final_chunk = chunk
@@ -227,12 +230,32 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                             "status": "running"
                         })
 
-            # 处理消息
+            # 处理消息（只处理新消息，避免重复）
             if len(chunk.get("messages", [])) > 0:
                 last_message = chunk["messages"][-1]
-                llm_call_count += 1  # 每个消息都是一次LLM调用
+
+                # 使用消息的 id 属性（如果有）或者对象 id 来去重
+                # LangGraph 消息通常有 id 属性
+                if hasattr(last_message, "id") and last_message.id:
+                    message_id = last_message.id
+                else:
+                    # 如果没有id，使用内容hash作为唯一标识
+                    content_for_hash = str(getattr(last_message, "content", ""))
+                    tool_calls_for_hash = str(getattr(last_message, "tool_calls", ""))
+                    message_id = hash(content_for_hash + tool_calls_for_hash)
+
+                # 跳过已处理的消息
+                if message_id in processed_message_ids:
+                    continue
+
+                processed_message_ids.add(message_id)
+                llm_call_count += 1  # 每个新消息计数一次
+
+                # 检查是否有工具调用
+                has_tool_calls = hasattr(last_message, "tool_calls") and last_message.tool_calls
 
                 # 提取内容
+                content = None
                 if hasattr(last_message, "content"):
                     content = last_message.content
                     if isinstance(content, list):
@@ -241,21 +264,15 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                         for item in content:
                             if isinstance(item, dict) and item.get('type') == 'text':
                                 text_parts.append(item.get('text', ''))
-                        content = ' '.join(text_parts)
+                        content = ' '.join(text_parts) if text_parts else None
+                    elif content:
+                        content = str(content).strip()
 
-                    send_progress_sync(task_id, "message", {
-                        "content": str(content),  # 发送完整内容
-                        "stats": {
-                            "tool_calls": tool_call_count,
-                            "llm_calls": llm_call_count,
-                            "reports": report_count
-                        }
-                    })
-
-                # 处理工具调用
-                if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+                # 策略：如果有工具调用，只保存工具调用；如果有有意义的内容，保存消息
+                if has_tool_calls:
+                    # 保存工具调用
                     for tool_call in last_message.tool_calls:
-                        tool_call_count += 1  # 统计工具调用次数
+                        tool_call_count += 1
 
                         tool_name = tool_call.get("name") if isinstance(tool_call, dict) else getattr(tool_call, "name", "unknown")
                         tool_args = tool_call.get("args") if isinstance(tool_call, dict) else getattr(tool_call, "args", {})
@@ -270,7 +287,20 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                             }
                         })
 
-            # 处理报告
+                # 如果有有意义的内容，也保存消息（即使有工具调用也保存内容）
+                if content and len(content) > 10:
+                    # 过滤掉系统消息和无用内容
+                    if not any(skip in content.lower() for skip in ['system:', 'function:', 'tool response:']):
+                        send_progress_sync(task_id, "message", {
+                            "content": content,
+                            "stats": {
+                                "tool_calls": tool_call_count,
+                                "llm_calls": llm_call_count,
+                                "reports": report_count
+                            }
+                        })
+
+            # 处理报告（同时保存到report表和task_message表）
             report_types = [
                 "market_report", "sentiment_report", "news_report",
                 "fundamentals_report", "investment_plan",
@@ -279,8 +309,9 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
 
             for report_type in report_types:
                 if report_type in chunk and chunk[report_type]:
-                    report_count += 1  # 统计报告生成次数
+                    report_count += 1
 
+                    # 保存到 task_message 表（展示分析过程）
                     send_progress_sync(task_id, "report", {
                         "report_type": report_type,
                         "content": chunk[report_type],
@@ -291,7 +322,7 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                         }
                     })
 
-                    # 保存报告到数据库
+                    # 同时保存到 report 表（结构化存储）
                     save_report(task_id, report_type, chunk[report_type])
 
         print(f"✅ 分析完成,共处理 {chunk_count} 个chunk")

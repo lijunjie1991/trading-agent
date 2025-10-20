@@ -144,17 +144,19 @@ const taskSlice = createSlice({
       // Add multiple messages (from polling)
       const newMessages = action.payload
       if (newMessages && newMessages.length > 0) {
-        state.messages = [...newMessages.reverse(), ...state.messages]
+        // Messages are expected in DESC order (newest first)
+        state.messages = [...newMessages, ...state.messages]
 
         // Keep only last 100 messages
         if (state.messages.length > 100) {
           state.messages = state.messages.slice(0, 100)
         }
 
-        // Update last timestamp (最新消息的时间戳)
-        const timestamps = newMessages.map(m => new Date(m.createdAt).getTime())
-        const maxTimestamp = new Date(Math.max(...timestamps)).toISOString()
-        state.lastTimestamp = maxTimestamp
+        // Update last timestamp (最新消息的时间戳 - 第一个消息是最新的)
+        const latestMessage = newMessages[0]
+        if (latestMessage && latestMessage.createdAt) {
+          state.lastTimestamp = latestMessage.createdAt
+        }
       }
     },
 
@@ -188,6 +190,7 @@ const taskSlice = createSlice({
 
     resetTaskState: (state) => {
       state.messages = []
+      state.lastTimestamp = null
       state.agentStatuses = initializeAgentStatuses()
       state.workflowStage = null
       state.stats = {
@@ -272,19 +275,31 @@ const taskSlice = createSlice({
     // Fetch task messages
     builder.addCase(fetchTaskMessages.fulfilled, (state, action) => {
       const messages = action.payload || []
-      if (messages.length > 0) {
-        // Add new messages to the front
-        state.messages = [...messages.reverse(), ...state.messages]
+
+      if (state.lastTimestamp === null || state.messages.length === 0) {
+        // Initial fetch - replace all messages
+        // Backend returns DESC order (newest first)
+        state.messages = messages
+
+        // Update last timestamp
+        if (messages.length > 0 && messages[0].createdAt) {
+          state.lastTimestamp = messages[0].createdAt
+        }
+      } else if (messages.length > 0) {
+        // Incremental fetch - add new messages to the front
+        // Backend returns DESC order (newest first)
+        state.messages = [...messages, ...state.messages]
 
         // Keep only last 100 messages
         if (state.messages.length > 100) {
           state.messages = state.messages.slice(0, 100)
         }
 
-        // Update last timestamp (最新消息的时间戳)
-        const timestamps = messages.map(m => new Date(m.createdAt).getTime())
-        const maxTimestamp = new Date(Math.max(...timestamps)).toISOString()
-        state.lastTimestamp = maxTimestamp
+        // Update last timestamp (最新消息的时间戳 - 第一个消息是最新的)
+        const latestMessage = messages[0]
+        if (latestMessage && latestMessage.createdAt) {
+          state.lastTimestamp = latestMessage.createdAt
+        }
       }
     })
   },
