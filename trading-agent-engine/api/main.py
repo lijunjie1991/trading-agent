@@ -1,8 +1,8 @@
 """
 TradingAgents FastAPI Service
-提供HTTP API和WebSocket接口,包装TradingAgents核心功能
+提供HTTP API接口,包装TradingAgents核心功能
 """
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -23,7 +23,7 @@ from tradingagents.default_config import DEFAULT_CONFIG
 from dotenv import load_dotenv
 
 # 导入数据库服务
-from db_service import update_task_status, save_report, test_connection
+from db_service import update_task_status, save_report, save_task_message, test_connection
 
 load_dotenv()
 
@@ -92,56 +92,6 @@ class ProgressMessage(BaseModel):
     timestamp: str
     data: Dict[str, Any]
 
-# ==================== WebSocket连接管理器 ====================
-
-class ConnectionManager:
-    """管理WebSocket连接"""
-
-    def __init__(self):
-        self.active_connections: Dict[str, WebSocket] = {}
-        self.task_history: Dict[str, List[Dict]] = {}  # 存储每个任务的消息历史
-
-    async def connect(self, task_id: str, websocket: WebSocket):
-        """建立连接"""
-        await websocket.accept()
-        self.active_connections[task_id] = websocket
-        print(f"✅ WebSocket连接已建立: {task_id}")
-
-        # 发送历史消息(如果有)
-        if task_id in self.task_history:
-            for msg in self.task_history[task_id]:
-                try:
-                    await websocket.send_json(msg)
-                except:
-                    pass
-
-    def disconnect(self, task_id: str):
-        """断开连接"""
-        if task_id in self.active_connections:
-            del self.active_connections[task_id]
-            print(f"❌ WebSocket连接已断开: {task_id}")
-
-    async def send_progress(self, task_id: str, message_type: str, data: Dict[str, Any]):
-        """发送进度消息"""
-        message = {
-            "type": message_type,
-            "timestamp": datetime.now().isoformat(),
-            "data": data
-        }
-
-        # 保存到历史
-        if task_id not in self.task_history:
-            self.task_history[task_id] = []
-        self.task_history[task_id].append(message)
-
-        # 发送给连接的客户端
-        if task_id in self.active_connections:
-            try:
-                await self.active_connections[task_id].send_json(message)
-                print(f"📤 发送消息 [{message_type}]: {task_id}")
-            except Exception as e:
-                print(f"❌ 发送消息失败 {task_id}: {e}")
-
 # ==================== 全局变量 ====================
 
 app = FastAPI(
@@ -159,9 +109,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# WebSocket管理器
-manager = ConnectionManager()
-
 # 线程池执行器 (用于真正的后台异步执行)
 from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor(max_workers=4)  # 支持4个并发任务
@@ -169,31 +116,12 @@ executor = ThreadPoolExecutor(max_workers=4)  # 支持4个并发任务
 # ==================== 辅助函数 ====================
 
 def send_progress_sync(task_id: str, message_type: str, data: Dict[str, Any]):
-    """同步发送进度消息 (线程安全)"""
-    message = {
-        "type": message_type,
-        "timestamp": datetime.now().isoformat(),
-        "data": data
-    }
-
-    # 保存到历史
-    if task_id not in manager.task_history:
-        manager.task_history[task_id] = []
-    manager.task_history[task_id].append(message)
-
-    # 如果有WebSocket连接,尝试发送 (使用asyncio)
-    if task_id in manager.active_connections:
-        try:
-            # 在事件循环中调度发送
-            import asyncio
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(
-                manager.active_connections[task_id].send_json(message)
-            )
-            print(f"📤 发送消息 [{message_type}]: {task_id}")
-        except Exception as e:
-            print(f"⚠️ 发送WebSocket消息失败 {task_id}: {e}")
+    """同步保存进度消息到数据库"""
+    # 将消息保存到数据库
+    try:
+        save_task_message(task_id, message_type, data)
+    except Exception as e:
+        print(f"⚠️ 保存消息到数据库失败 {task_id}: {e}")
 
 # ==================== 后台任务处理 ====================
 
@@ -434,8 +362,7 @@ async def health_check():
         "status": "healthy",
         "service": "TradingAgents API",
         "timestamp": datetime.now().isoformat(),
-        "active_tasks": active_tasks,
-        "active_websockets": len(manager.active_connections)
+        "active_tasks": active_tasks
     }
 
 @app.post("/api/v1/analysis/start", response_model=AnalysisResponse, tags=["分析"])
@@ -564,30 +491,6 @@ async def list_tasks(status: Optional[TaskStatus] = None, limit: int = 20):
         }
     finally:
         db.close()
-
-@app.websocket("/ws/analysis/{task_id}")
-async def websocket_endpoint(websocket: WebSocket, task_id: str):
-    """
-    WebSocket端点,用于接收实时分析进度
-
-    连接后会收到以下类型的消息:
-    - status: 状态更新
-    - message: LLM推理消息
-    - tool_call: 工具调用信息
-    - report: 报告生成
-    """
-    await manager.connect(task_id, websocket)
-    try:
-        while True:
-            # 保持连接,接收客户端ping
-            data = await websocket.receive_text()
-            if data == "ping":
-                await websocket.send_text("pong")
-    except WebSocketDisconnect:
-        manager.disconnect(task_id)
-    except Exception as e:
-        print(f"WebSocket异常: {e}")
-        manager.disconnect(task_id)
 
 # ==================== 启动配置 ====================
 

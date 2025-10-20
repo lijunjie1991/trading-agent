@@ -6,8 +6,8 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
 
     <!-- ChangeSet 1: Create users table -->
-    <changeSet id="1" author="tradingagent">
-        <comment>Create users table</comment>
+    <changeSet id="1-create-users" author="JunjieLi">
+        <comment>Create users table with all constraints</comment>
         <sql>
             CREATE TABLE users (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -22,9 +22,9 @@
         </rollback>
     </changeSet>
 
-    <!-- ChangeSet 2: Create tasks table -->
-    <changeSet id="2" author="tradingagent">
-        <comment>Create tasks table</comment>
+    <!-- ChangeSet 2: Create tasks table with indexes and foreign keys -->
+    <changeSet id="2-create-tasks" author="JunjieLi">
+        <comment>Create tasks table with all indexes and foreign keys</comment>
         <sql>
             CREATE TABLE tasks (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -38,7 +38,13 @@
                 final_decision VARCHAR(50),
                 error_message TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                completed_at TIMESTAMP NULL
+                completed_at TIMESTAMP NULL,
+                INDEX idx_tasks_user_id (user_id),
+                INDEX idx_tasks_task_id (task_id),
+                INDEX idx_tasks_status (status),
+                CONSTRAINT fk_tasks_user_id
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                    ON DELETE CASCADE
             );
         </sql>
         <rollback>
@@ -46,45 +52,20 @@
         </rollback>
     </changeSet>
 
-    <!-- ChangeSet 3: Add foreign key for tasks.user_id -->
-    <changeSet id="3" author="tradingagent">
-        <comment>Add foreign key constraint for tasks.user_id</comment>
-        <sql>
-            ALTER TABLE tasks
-                ADD CONSTRAINT fk_tasks_user_id
-                FOREIGN KEY (user_id) REFERENCES users(id)
-                ON DELETE CASCADE;
-        </sql>
-        <rollback>
-            ALTER TABLE tasks DROP FOREIGN KEY fk_tasks_user_id;
-        </rollback>
-    </changeSet>
-
-    <!-- ChangeSet 4: Create indexes on tasks table -->
-    <changeSet id="4" author="tradingagent">
-        <comment>Create indexes on tasks table</comment>
-        <sql>
-            CREATE INDEX idx_tasks_user_id ON tasks(user_id);
-            CREATE INDEX idx_tasks_task_id ON tasks(task_id);
-            CREATE INDEX idx_tasks_status ON tasks(status);
-        </sql>
-        <rollback>
-            DROP INDEX idx_tasks_user_id ON tasks;
-            DROP INDEX idx_tasks_task_id ON tasks;
-            DROP INDEX idx_tasks_status ON tasks;
-        </rollback>
-    </changeSet>
-
-    <!-- ChangeSet 5: Create reports table -->
-    <changeSet id="5" author="tradingagent">
-        <comment>Create reports table</comment>
+    <!-- ChangeSet 3: Create reports table with indexes and foreign keys -->
+    <changeSet id="3-create-reports" author="JunjieLi">
+        <comment>Create reports table with all indexes and foreign keys</comment>
         <sql>
             CREATE TABLE reports (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 task_id BIGINT NOT NULL,
                 report_type VARCHAR(50) NOT NULL,
                 content TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                INDEX idx_reports_task_id (task_id),
+                CONSTRAINT fk_reports_task_id
+                    FOREIGN KEY (task_id) REFERENCES tasks(id)
+                    ON DELETE CASCADE
             );
         </sql>
         <rollback>
@@ -92,28 +73,24 @@
         </rollback>
     </changeSet>
 
-    <!-- ChangeSet 6: Add foreign key for reports.task_id -->
-    <changeSet id="6" author="tradingagent">
-        <comment>Add foreign key constraint for reports.task_id</comment>
+    <!-- ChangeSet 4: Create task_messages table with indexes and foreign keys -->
+    <changeSet id="4-create-task-messages" author="JunjieLi">
+        <comment>Create task_messages table with all indexes and foreign keys</comment>
         <sql>
-            ALTER TABLE reports
-                ADD CONSTRAINT fk_reports_task_id
-                FOREIGN KEY (task_id) REFERENCES tasks(id)
-                ON DELETE CASCADE;
+            CREATE TABLE task_messages (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                task_id BIGINT NOT NULL,
+                message_type VARCHAR(20) NOT NULL,
+                content JSON NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                INDEX idx_task_messages_task_time (task_id, created_at),
+                CONSTRAINT fk_task_messages_task_id
+                    FOREIGN KEY (task_id) REFERENCES tasks(id)
+                    ON DELETE CASCADE
+            );
         </sql>
         <rollback>
-            ALTER TABLE reports DROP FOREIGN KEY fk_reports_task_id;
-        </rollback>
-    </changeSet>
-
-    <!-- ChangeSet 7: Create index on reports.task_id -->
-    <changeSet id="7" author="tradingagent">
-        <comment>Create index on reports.task_id</comment>
-        <sql>
-            CREATE INDEX idx_reports_task_id ON reports(task_id);
-        </sql>
-        <rollback>
-            DROP INDEX idx_reports_task_id ON reports;
+            DROP TABLE task_messages;
         </rollback>
     </changeSet>
 

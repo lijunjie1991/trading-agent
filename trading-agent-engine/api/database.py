@@ -2,7 +2,7 @@
 Database configuration and models for TradingAgents
 Matches Java Spring Boot entity structure
 """
-from sqlalchemy import create_engine, Column, BigInteger, String, Integer, Text, DateTime, Date, ForeignKey
+from sqlalchemy import create_engine, Column, BigInteger, String, Integer, Text, DateTime, Date, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -100,6 +100,20 @@ class Report(Base):
 
     # Relationship
     task = relationship("Task", back_populates="reports")
+
+
+class TaskMessage(Base):
+    """任务消息表 - 用于存储分析过程中产生的消息"""
+    __tablename__ = "task_messages"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    task_id = Column(BigInteger, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    message_type = Column(String(20), nullable=False)
+    content = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationship
+    task = relationship("Task")
 
 
 def get_db():

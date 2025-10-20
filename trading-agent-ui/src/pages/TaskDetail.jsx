@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Card, Row, Col, Button, Typography, Space, Tag, Divider, message } from 'antd'
@@ -9,9 +9,8 @@ import AgentPanel from '../components/Task/AgentPanel'
 import MessagePanel from '../components/Task/MessagePanel'
 import StatsPanel from '../components/Task/StatsPanel'
 import Loading from '../components/Common/Loading'
-import websocketService from '../services/websocketService'
 import {
-  addMessage,
+  addMessages,
   updateAgentStatus,
   updateStats,
   updateCurrentReport,
@@ -19,6 +18,7 @@ import {
   updateWorkflowStage,
   resetTaskState,
   fetchTask,
+  fetchTaskMessages,
 } from '../store/slices/taskSlice'
 import { WS_MESSAGE_TYPES, WORKFLOW_STAGES } from '../utils/constants'
 import { formatDateTime, truncateTaskId, getStatusColor } from '../utils/helpers'
@@ -29,8 +29,9 @@ const TaskDetail = () => {
   const { taskId } = useParams()
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const [isConnected, setIsConnected] = useState(false)
+  const [isPolling, setIsPolling] = useState(false)
   const [completedStages, setCompletedStages] = useState([])
+  const pollingIntervalRef = useRef(null)
 
   const {
     currentTask,
@@ -41,70 +42,87 @@ const TaskDetail = () => {
     finalDecision,
     workflowStage,
     loading,
+    lastTimestamp,
   } = useSelector((state) => state.task)
 
   useEffect(() => {
     dispatch(resetTaskState())
     dispatch(fetchTask(taskId))
 
-    // Connect to WebSocket
-    websocketService.connect(taskId)
-
-    const unsubscribeMessage = websocketService.onMessage((data) => {
-      handleWebSocketMessage(data)
-    })
-
-    const unsubscribeOpen = websocketService.onOpen(() => {
-      setIsConnected(true)
-      message.success('Connected to real-time updates')
-    })
-
-    const unsubscribeClose = websocketService.onClose(() => {
-      setIsConnected(false)
-    })
-
-    const unsubscribeError = websocketService.onError(() => {
-      message.error('WebSocket connection error')
-    })
+    // Start polling for messages
+    startPolling()
 
     return () => {
-      websocketService.disconnect()
-      unsubscribeMessage()
-      unsubscribeOpen()
-      unsubscribeClose()
-      unsubscribeError()
+      stopPolling()
     }
   }, [taskId, dispatch])
 
-  const handleWebSocketMessage = (data) => {
-    const { type, data: messageData, timestamp } = data
+  const startPolling = () => {
+    setIsPolling(true)
 
-    // Add to messages
-    dispatch(addMessage({ type, data: messageData, timestamp }))
+    // Initial fetch
+    dispatch(fetchTaskMessages({ taskId, lastTimestamp: null }))
+
+    // Poll every 2 seconds
+    pollingIntervalRef.current = setInterval(() => {
+      // Only poll if task is PENDING or RUNNING
+      if (currentTask?.status === 'PENDING' || currentTask?.status === 'RUNNING') {
+        dispatch(fetchTaskMessages({ taskId, lastTimestamp }))
+      }
+    }, 2000)
+  }
+
+  const stopPolling = () => {
+    setIsPolling(false)
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+  }
+
+  // Stop polling when task is completed or failed
+  useEffect(() => {
+    if (currentTask?.status === 'COMPLETED' || currentTask?.status === 'FAILED') {
+      stopPolling()
+    }
+  }, [currentTask?.status])
+
+  // Process new messages when they arrive
+  useEffect(() => {
+    if (messages.length === 0) return
+
+    // Process the most recent messages
+    messages.slice(0, 10).forEach((msg) => {
+      handleMessage(msg)
+    })
+  }, [messages.length])
+
+  const handleMessage = (msg) => {
+    const { messageType, content } = msg
 
     // Update stats
-    if (messageData.stats) {
+    if (content.stats) {
       dispatch(
         updateStats({
-          toolCalls: messageData.stats.tool_calls || 0,
-          llmCalls: messageData.stats.llm_calls || 0,
-          reports: messageData.stats.reports || 0,
+          toolCalls: content.stats.tool_calls || 0,
+          llmCalls: content.stats.llm_calls || 0,
+          reports: content.stats.reports || 0,
         })
       )
     }
 
     // Handle different message types
-    switch (type) {
+    switch (messageType) {
       case WS_MESSAGE_TYPES.AGENT_STATUS:
-        dispatch(updateAgentStatus({ agent: messageData.agent, status: messageData.status }))
-        updateWorkflowStageFromAgent(messageData.agent, messageData.status)
+        dispatch(updateAgentStatus({ agent: content.agent, status: content.status }))
+        updateWorkflowStageFromAgent(content.agent, content.status)
         break
 
       case WS_MESSAGE_TYPES.STATUS:
-        if (messageData.decision) {
-          dispatch(updateFinalDecision(messageData.decision))
+        if (content.decision) {
+          dispatch(updateFinalDecision(content.decision))
         }
-        if (messageData.status === 'completed') {
+        if (content.status === 'completed') {
           setCompletedStages([
             WORKFLOW_STAGES.ANALYSIS,
             WORKFLOW_STAGES.RESEARCH,
@@ -115,7 +133,7 @@ const TaskDetail = () => {
         break
 
       case WS_MESSAGE_TYPES.REPORT:
-        dispatch(updateCurrentReport(messageData))
+        dispatch(updateCurrentReport(content))
         break
 
       default:
@@ -159,12 +177,12 @@ const TaskDetail = () => {
     }
   }
 
-  const handleDisconnect = () => {
-    websocketService.disconnect()
+  const handleStopPolling = () => {
+    stopPolling()
   }
 
-  const handleReconnect = () => {
-    websocketService.connect(taskId)
+  const handleStartPolling = () => {
+    startPolling()
   }
 
   if (loading) {
@@ -177,13 +195,13 @@ const TaskDetail = () => {
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/tasks')}>
           Back
         </Button>
-        {isConnected ? (
-          <Button icon={<StopOutlined />} onClick={handleDisconnect} danger>
-            Disconnect
+        {isPolling ? (
+          <Button icon={<StopOutlined />} onClick={handleStopPolling} danger>
+            Stop Updates
           </Button>
         ) : (
-          <Button icon={<ReloadOutlined />} onClick={handleReconnect}>
-            Reconnect
+          <Button icon={<ReloadOutlined />} onClick={handleStartPolling}>
+            Resume Updates
           </Button>
         )}
       </Space>
@@ -209,9 +227,9 @@ const TaskDetail = () => {
               <Tag color={getStatusColor(currentTask?.status)} style={{ fontSize: 14, padding: '4px 12px' }}>
                 {currentTask?.status?.toUpperCase() || 'UNKNOWN'}
               </Tag>
-              {isConnected && (
+              {isPolling && (
                 <Tag color="success" style={{ fontSize: 12 }}>
-                  Live Updates
+                  Auto-refreshing
                 </Tag>
               )}
               {finalDecision && (

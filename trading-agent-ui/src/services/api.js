@@ -115,4 +115,18 @@ api.interceptors.response.use(
   }
 )
 
+// Task Messages API
+export const taskMessagesAPI = {
+  /**
+   * Get task messages
+   * @param {string} taskId - Task ID
+   * @param {string} lastTimestamp - Last timestamp (optional for incremental fetch)
+   * @returns {Promise<Array>} - Array of messages
+   */
+  getTaskMessages: (taskId, lastTimestamp = null) => {
+    const params = lastTimestamp ? { lastTimestamp } : {}
+    return api.get(`/api/v1/tasks/${taskId}/messages`, { params })
+  }
+}
+
 export default api

@@ -48,4 +48,12 @@ public class TaskController {
         Map<String, Long> stats = taskService.getTaskStats();
         return ResponseEntity.ok(Result.success(stats));
     }
+
+    @GetMapping("/{taskId}/messages")
+    public ResponseEntity<Result<List<Map<String, Object>>>> getTaskMessages(
+            @PathVariable String taskId,
+            @RequestParam(required = false) String lastTimestamp) {
+        List<Map<String, Object>> messages = taskService.getTaskMessages(taskId, lastTimestamp);
+        return ResponseEntity.ok(Result.success(messages));
+    }
 }

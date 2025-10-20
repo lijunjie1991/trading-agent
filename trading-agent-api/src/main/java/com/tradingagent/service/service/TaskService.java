@@ -11,7 +11,9 @@ import com.tradingagent.service.entity.User;
 import com.tradingagent.service.exception.BusinessException;
 import com.tradingagent.service.exception.ResourceNotFoundException;
 import com.tradingagent.service.exception.UnauthorizedException;
+import com.tradingagent.service.entity.TaskMessage;
 import com.tradingagent.service.repository.ReportRepository;
+import com.tradingagent.service.repository.TaskMessageRepository;
 import com.tradingagent.service.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,6 +34,7 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final ReportRepository reportRepository;
+    private final TaskMessageRepository taskMessageRepository;
     private final PythonServiceClient pythonServiceClient;
     private final AuthService authService;
     private final ObjectMapper objectMapper;
@@ -133,28 +137,36 @@ public class TaskService {
         return stats;
     }
 
-    // ==================== 已废弃的方法 ====================
-    // 以下方法已不再使用，因为 Python 服务直接写入数据库
-    // 保留这些方法仅为了向后兼容，实际数据由 Python 端维护
+    public List<Map<String, Object>> getTaskMessages(String taskId, String lastTimestamp) {
+        Task task = taskRepository.findByTaskId(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
 
-    /**
-     * @deprecated Python 服务直接写入数据库，此方法已废弃
-     */
-    @Deprecated
-    @Transactional
-    public void updateTaskStatus(String taskId, String status, String finalDecision, String errorMessage) {
-        log.warn("updateTaskStatus is deprecated - Python service writes to DB directly");
-        // 保留空实现，避免调用报错
-    }
+        User currentUser = authService.getCurrentUser();
+        if (!task.getUser().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
+        }
 
-    /**
-     * @deprecated Python 服务直接写入数据库，此方法已废弃
-     */
-    @Deprecated
-    @Transactional
-    public void saveReport(String taskId, String reportType, String content) {
-        log.warn("saveReport is deprecated - Python service writes to DB directly");
-        // 保留空实现，避免调用报错
+        List<TaskMessage> messages;
+        if (lastTimestamp != null && !lastTimestamp.isEmpty()) {
+            // 增量查询：只获取新消息
+            LocalDateTime timestamp = LocalDateTime.parse(lastTimestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            messages = taskMessageRepository.findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtAsc(
+                    task.getId(), timestamp);
+        } else {
+            // 全量查询：获取所有消息
+            messages = taskMessageRepository.findByTaskIdOrderByCreatedAtAsc(task.getId());
+        }
+
+        return messages.stream()
+                .map(message -> {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", message.getId());
+                    map.put("messageType", message.getMessageType());
+                    map.put("content", message.getContent());
+                    map.put("createdAt", message.getCreatedAt());
+                    return map;
+                })
+                .collect(Collectors.toList());
     }
 
     private TaskResponse toTaskResponse(Task task) {

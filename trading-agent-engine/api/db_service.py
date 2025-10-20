@@ -2,9 +2,9 @@
 Database service functions for TradingAgents
 Handles all database operations
 """
-from database import get_db_session, Task, Report
+from database import get_db_session, Task, Report, TaskMessage
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 import json
 
 
@@ -105,6 +105,42 @@ def get_task_by_uuid(task_id: str):
     try:
         task = db.query(Task).filter(Task.task_id == task_id).first()
         return task
+    finally:
+        db.close()
+
+
+def save_task_message(task_id: str, message_type: str, content: Dict[Any, Any]):
+    """
+    保存任务消息到数据库
+
+    Args:
+        task_id: 任务UUID
+        message_type: 消息类型 (status, message, tool_call, report, agent_status)
+        content: 消息内容 (字典)
+    """
+    db = get_db_session()
+    try:
+        # 先通过 task_id (UUID) 查找任务
+        task = db.query(Task).filter(Task.task_id == task_id).first()
+        if not task:
+            print(f"⚠️ Task not found: {task_id}")
+            return False
+
+        # 创建消息记录
+        message = TaskMessage(
+            task_id=task.id,  # 使用数据库主键
+            message_type=message_type,
+            content=content
+        )
+
+        db.add(message)
+        db.commit()
+        return True
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error saving task message: {e}")
+        return False
     finally:
         db.close()
 

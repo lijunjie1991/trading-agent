@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import taskService from '../../services/taskService'
+import { taskMessagesAPI } from '../../services/api'
 import { AGENT_STATUS } from '../../utils/constants'
 
 const initialState = {
@@ -17,8 +18,9 @@ const initialState = {
     failed: 0,
   },
 
-  // WebSocket messages
+  // Task messages (from polling)
   messages: [],
+  lastTimestamp: null, // Track last fetched message timestamp
   agentStatuses: {},
   workflowStage: null,
   stats: {
@@ -111,18 +113,48 @@ export const fetchTaskStats = createAsyncThunk(
   }
 )
 
+export const fetchTaskMessages = createAsyncThunk(
+  'task/fetchTaskMessages',
+  async ({ taskId, lastTimestamp }, { rejectWithValue }) => {
+    try {
+      const response = await taskMessagesAPI.getTaskMessages(taskId, lastTimestamp)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
 // Task slice
 const taskSlice = createSlice({
   name: 'task',
   initialState,
   reducers: {
-    // WebSocket message handlers
+    // Message handlers (from polling)
     addMessage: (state, action) => {
       state.messages.unshift(action.payload)
 
       // Keep only last 100 messages
       if (state.messages.length > 100) {
         state.messages = state.messages.slice(0, 100)
+      }
+    },
+
+    addMessages: (state, action) => {
+      // Add multiple messages (from polling)
+      const newMessages = action.payload
+      if (newMessages && newMessages.length > 0) {
+        state.messages = [...newMessages.reverse(), ...state.messages]
+
+        // Keep only last 100 messages
+        if (state.messages.length > 100) {
+          state.messages = state.messages.slice(0, 100)
+        }
+
+        // Update last timestamp (最新消息的时间戳)
+        const timestamps = newMessages.map(m => new Date(m.createdAt).getTime())
+        const maxTimestamp = new Date(Math.max(...timestamps)).toISOString()
+        state.lastTimestamp = maxTimestamp
       }
     },
 
@@ -236,11 +268,31 @@ const taskSlice = createSlice({
     builder.addCase(fetchTaskStats.fulfilled, (state, action) => {
       state.taskStats = action.payload
     })
+
+    // Fetch task messages
+    builder.addCase(fetchTaskMessages.fulfilled, (state, action) => {
+      const messages = action.payload || []
+      if (messages.length > 0) {
+        // Add new messages to the front
+        state.messages = [...messages.reverse(), ...state.messages]
+
+        // Keep only last 100 messages
+        if (state.messages.length > 100) {
+          state.messages = state.messages.slice(0, 100)
+        }
+
+        // Update last timestamp (最新消息的时间戳)
+        const timestamps = messages.map(m => new Date(m.createdAt).getTime())
+        const maxTimestamp = new Date(Math.max(...timestamps)).toISOString()
+        state.lastTimestamp = maxTimestamp
+      }
+    })
   },
 })
 
 export const {
   addMessage,
+  addMessages,
   updateAgentStatus,
   updateStats,
   updateCurrentReport,
