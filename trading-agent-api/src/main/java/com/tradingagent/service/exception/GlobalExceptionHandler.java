@@ -82,7 +82,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Result<Void>> handleBadCredentialsException(BadCredentialsException e, HttpServletRequest request) {
         log.warn("Bad credentials: {}", e.getMessage());
-        Result<Void> result = Result.error(ResultCode.INVALID_CREDENTIALS, request.getRequestURI());
+        Result<Void> result = Result.error(ResultCode.INVALID_CREDENTIALS);
+        result.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
     }
 
@@ -92,7 +93,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Result<Void>> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
         log.warn("Access denied: {}", e.getMessage());
-        Result<Void> result = Result.error(ResultCode.FORBIDDEN, request.getRequestURI());
+        Result<Void> result = Result.error(ResultCode.FORBIDDEN);
+        result.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(result);
     }
 
@@ -103,7 +105,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleInsufficientAuthenticationException(
             InsufficientAuthenticationException e, HttpServletRequest request) {
         log.warn("Insufficient authentication: {}", e.getMessage());
-        Result<Void> result = Result.error(ResultCode.UNAUTHORIZED, request.getRequestURI());
+        Result<Void> result = Result.error(ResultCode.UNAUTHORIZED);
+        result.setPath(request.getRequestURI());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
     }
 

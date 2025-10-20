@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +150,9 @@ public class TaskService {
         List<TaskMessage> messages;
         if (lastTimestamp != null && !lastTimestamp.isEmpty()) {
             // 增量查询：只获取新消息
-            LocalDateTime timestamp = LocalDateTime.parse(lastTimestamp, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+            // Parse ISO 8601 format with timezone (e.g., "2025-10-20T14:14:35.000Z")
+            LocalDateTime timestamp = OffsetDateTime.parse(lastTimestamp, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                    .toLocalDateTime();
             messages = taskMessageRepository.findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtAsc(
                     task.getId(), timestamp);
         } else {

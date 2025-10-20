@@ -213,6 +213,7 @@ export const getMessageTypeIcon = (type) => {
  * Get message type label
  */
 export const getMessageTypeLabel = (type) => {
+  if (!type) return 'UNKNOWN'
   const labels = {
     status: 'STATUS',
     message: 'REASONING',

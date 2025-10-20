@@ -88,11 +88,19 @@ api.interceptors.response.use(
       // Show error notification
       antdMessage.error(errorMessage)
 
-      // Handle 401 Unauthorized
-      if (status === 401) {
-        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
-        localStorage.removeItem(STORAGE_KEYS.USER_INFO)
-        window.location.href = '/login'
+      // Handle 401 Unauthorized and 403 Forbidden
+      // But don't redirect if it's a login request (user should see the error message)
+      if (status === 401 || status === 403) {
+        const isLoginRequest = error.config?.url?.includes('/auth/login') ||
+                               error.config?.url?.includes('/auth/register')
+
+        if (!isLoginRequest) {
+          // Only clear auth and redirect if it's not a login/register request
+          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
+          localStorage.removeItem(STORAGE_KEYS.USER_INFO)
+          window.location.href = '/login'
+        }
+        // If it's a login request, just show the error message (already shown above)
       }
 
       // Create enhanced error object

@@ -27,28 +27,37 @@ def update_task_status(
     try:
         task = db.query(Task).filter(Task.task_id == task_id).first()
         if not task:
-            print(f"⚠️ Task not found: {task_id}")
+            error_msg = f"⚠️ Task not found in database: {task_id}"
+            print(error_msg)
+            print(f"   Attempted to update status to: {status}")
+            if error_message:
+                print(f"   Error message: {error_message}")
             return False
 
+        print(f"📝 Updating task {task_id[:8]}: {task.status} -> {status}")
         task.status = status.upper()
 
         if final_decision:
             task.final_decision = final_decision
+            print(f"   Final decision: {final_decision}")
 
         if error_message:
             task.error_message = error_message
+            print(f"   Error message: {error_message[:100]}...")  # 打印前100个字符
 
         # 如果任务完成或失败，设置完成时间
         if status.upper() in ["COMPLETED", "FAILED"]:
             task.completed_at = datetime.utcnow()
 
         db.commit()
-        print(f"✅ Updated task {task_id[:8]} status to {status}")
+        print(f"✅ Successfully updated task {task_id[:8]} status to {status}")
         return True
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Error updating task status: {e}")
+        print(f"❌ Error updating task status for {task_id[:8]}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     finally:
         db.close()

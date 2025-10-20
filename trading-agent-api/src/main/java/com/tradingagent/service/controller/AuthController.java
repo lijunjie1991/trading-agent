@@ -41,4 +41,12 @@ public class AuthController {
         userData.put("email", user.getEmail());
         return ResponseEntity.ok(Result.success(userData));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Result<Void>> logout() {
+        // Since we're using JWT tokens, logout is handled on the client side
+        // by removing the token. This endpoint is provided for consistency
+        // and can be extended to implement token blacklisting if needed.
+        return ResponseEntity.ok(Result.success(null, "Logout successful"));
+    }
 }

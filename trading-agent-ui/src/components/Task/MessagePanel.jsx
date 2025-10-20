@@ -15,7 +15,10 @@ const MessagePanel = ({ messages }) => {
   }, [messages])
 
   const renderMessageContent = (message) => {
-    const { type, data } = message
+    // Database returns messageType and content
+    const { messageType, content } = message
+    const type = messageType
+    const data = content
 
     if (type === 'status') {
       return (
@@ -164,12 +167,12 @@ const MessagePanel = ({ messages }) => {
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
             {messages.map((message, index) => (
               <div
-                key={index}
+                key={message.id || index}
                 className="slide-in"
                 style={{
                   padding: 15,
-                  borderLeft: `4px solid ${getMessageBorderColor(message.type)}`,
-                  background: getMessageBackground(message.type),
+                  borderLeft: `4px solid ${getMessageBorderColor(message.messageType)}`,
+                  background: getMessageBackground(message.messageType),
                   borderRadius: 6,
                   boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                 }}
@@ -183,10 +186,10 @@ const MessagePanel = ({ messages }) => {
                   }}
                 >
                   <Text strong style={{ fontSize: 13 }}>
-                    {getMessageTypeIcon(message.type)} {getMessageTypeLabel(message.type)}
+                    {getMessageTypeIcon(message.messageType)} {getMessageTypeLabel(message.messageType)}
                   </Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    {formatTime(message.timestamp)}
+                    {formatTime(message.createdAt)}
                   </Text>
                 </div>
                 <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
