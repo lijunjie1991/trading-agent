@@ -166,7 +166,7 @@ const TaskDetail = () => {
             </Space>
           </Col>
           <Col>
-            {finalDecision ? (
+            {finalDecision && (currentTask?.status === 'COMPLETED' || currentTask?.status === 'FAILED') ? (
               <div style={{ textAlign: 'right' }}>
                 <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 8 }}>
                   Final Decision
