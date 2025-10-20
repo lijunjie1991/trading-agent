@@ -40,27 +40,13 @@ public class TaskService {
     private final AuthService authService;
     private final ObjectMapper objectMapper;
 
-    @Transactional
     public TaskResponse submitTask(TaskRequest request) {
         User currentUser = authService.getCurrentUser();
 
-        // Submit task to Python service
-        Map<String, Object> pythonResponse = pythonServiceClient
-                .submitAnalysisTask(
-                        request.getTicker(),
-                        request.getAnalysisDate(),
-                        request.getSelectedAnalysts(),
-                        request.getResearchDepth()
-                )
-                .block();
+        // Generate taskId first
+        String taskId = java.util.UUID.randomUUID().toString();
 
-        if (pythonResponse == null) {
-            throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR, "Failed to submit task to Python service");
-        }
-
-        String taskId = (String) pythonResponse.get("task_id");
-
-        // Save task to database
+        // Save task to database BEFORE submitting to Python
         Task task = Task.builder()
                 .taskId(taskId)
                 .user(currentUser)
@@ -72,7 +58,33 @@ public class TaskService {
                 .build();
 
         task = taskRepository.save(task);
+        log.info("Task created in database: {}", taskId);
 
+        // Submit task to Python service with the generated taskId
+        try {
+            Map<String, Object> pythonResponse = pythonServiceClient
+                    .submitAnalysisTask(
+                            taskId,
+                            request.getTicker(),
+                            request.getAnalysisDate(),
+                            request.getSelectedAnalysts(),
+                            request.getResearchDepth()
+                    )
+                    .block();
+
+            if (pythonResponse == null) {
+                throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR, "Failed to submit task to Python service");
+            }
+            log.info("Task submitted to Python service: {}", taskId);
+        } catch (Exception e) {
+            // If Python service fails, update task status to FAILED
+            task.setStatus("FAILED");
+            task.setErrorMessage("Failed to submit to Python service: " + e.getMessage());
+            task.setCompletedAt(LocalDateTime.now());
+            taskRepository.save(task);
+            log.error("Failed to submit task to Python service: {}", e.getMessage());
+            throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR, "Failed to submit task to Python service: " + e.getMessage());
+        }
         return toTaskResponse(task);
     }
 

@@ -21,12 +21,14 @@ public class PythonServiceClient {
     private String pythonServiceUrl;
 
     public Mono<Map<String, Object>> submitAnalysisTask(
+            String taskId,
             String ticker,
             String analysisDate,
             List<String> selectedAnalysts,
             Integer researchDepth) {
 
         Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("task_id", taskId);  // Include taskId from Java
         requestBody.put("ticker", ticker);
         requestBody.put("analysis_date", analysisDate);
         requestBody.put("selected_analysts", selectedAnalysts);

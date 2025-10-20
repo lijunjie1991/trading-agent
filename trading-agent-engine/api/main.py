@@ -52,6 +52,7 @@ class TaskStatus(str, Enum):
 
 class AnalysisRequest(BaseModel):
     """分析请求模型"""
+    task_id: Optional[str] = Field(default=None, description="任务ID (由Java端提供)")
     ticker: str = Field(..., description="股票代码", example="NVDA")
     analysis_date: str = Field(..., description="分析日期 YYYY-MM-DD", example="2024-05-10")
     selected_analysts: List[AnalystType] = Field(
@@ -135,8 +136,10 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
     report_count = 0
 
     try:
-        # 更新任务状态到数据库
-        update_task_status(task_id, "RUNNING")
+        # 更新任务状态到数据库（任务由Java端创建，应该已存在）
+        if not update_task_status(task_id, "RUNNING"):
+            print(f"❌ Task {task_id[:8]} not found in database, aborting")
+            return
 
         send_progress_sync(task_id, "status", {
             "status": "running",
@@ -320,7 +323,8 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
         traceback.print_exc()
 
         # 更新任务状态为失败（写入数据库）
-        update_task_status(task_id, "FAILED", error_message=str(e))
+        if not update_task_status(task_id, "FAILED", error_message=str(e)):
+            print(f"❌ Failed to update task {task_id[:8]} status to FAILED")
 
         send_progress_sync(task_id, "status", {
             "status": "failed",
@@ -371,26 +375,29 @@ async def start_analysis(
 ):
     """
     启动新的分析任务
-    注意：此端点仅用于 Python 内部测试，实际应该由 Java 端调用
 
+    当由Java端调用时，task_id会在请求中提供（任务已在Java数据库中创建）
+    当直接调用时（测试），会自动生成task_id
+
+    - **task_id**: 任务ID（由Java端提供，或自动生成）
     - **ticker**: 股票代码,如 NVDA, AAPL, TSLA
     - **analysis_date**: 分析日期,格式 YYYY-MM-DD
     - **selected_analysts**: 选择的分析师列表
     - **research_depth**: 研究深度(辩论轮数), 1-5
     """
-    # 生成任务ID
-    task_id = str(uuid.uuid4())
+    # 使用Java提供的taskId，如果没有则生成新的（用于直接测试）
+    task_id = request.task_id if request.task_id else str(uuid.uuid4())
 
     # 使用线程池异步执行任务 (真正的并发)
     loop = asyncio.get_event_loop()
     loop.run_in_executor(executor, run_analysis_task_sync, task_id, request)
 
-    print(f"✨ 创建分析任务: {task_id} - {request.ticker} on {request.analysis_date}")
+    print(f"✨ {'接收' if request.task_id else '创建'}分析任务: {task_id} - {request.ticker} on {request.analysis_date}")
 
     return AnalysisResponse(
         task_id=task_id,
         status=TaskStatus.PENDING,
-        message=f"分析任务已创建: {request.ticker}",
+        message=f"分析任务已{'接收' if request.task_id else '创建'}: {request.ticker}",
         created_at=datetime.now().isoformat()
     )
 
