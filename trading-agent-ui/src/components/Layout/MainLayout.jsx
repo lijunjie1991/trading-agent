@@ -8,7 +8,6 @@ import {
   HistoryOutlined,
   LogoutOutlined,
   UserOutlined,
-  RocketOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
@@ -103,14 +102,22 @@ const MainLayout = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 10,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
                 }}
               >
-                <RocketOutlined style={{ fontSize: 22, color: '#fff' }} />
+                <img
+                  src="/logo.png"
+                  alt="Logo"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
               </div>
               <div>
                 <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, lineHeight: 1.2 }}>
@@ -127,14 +134,22 @@ const MainLayout = () => {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               }}
             >
-              <RocketOutlined style={{ fontSize: 22, color: '#fff' }} />
+              <img
+                src="/logo.png"
+                alt="Logo"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
             </div>
           )}
         </div>
