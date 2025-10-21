@@ -11,27 +11,27 @@ import java.util.List;
 public interface TaskMessageRepository extends JpaRepository<TaskMessage, Long> {
 
     /**
-     * 查询指定任务的所有消息，按时间升序排序
+     * Query all messages for the specified task，Sort by time in ascending order
      */
     List<TaskMessage> findByTaskIdOrderByCreatedAtAsc(Long taskId);
 
     /**
-     * 查询指定任务的所有消息，按时间降序排序（最新的在前面）
+     * Query all messages for the specified task，By timeDescending ordersorted（Latest first）
      */
     List<TaskMessage> findByTaskIdOrderByCreatedAtDesc(Long taskId);
 
     /**
-     * 增量查询：获取指定任务中指定时间之后的消息（升序）
+     * Incremental query：GetspecifiedTaskmessages after the specified time（ascending）
      */
     List<TaskMessage> findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtAsc(Long taskId, LocalDateTime createdAt);
 
     /**
-     * 增量查询：获取指定任务中指定时间之后的消息（降序，最新的在前面）
+     * Incremental query：GetspecifiedTaskmessages after the specified time（Descending order，Latest first）
      */
     List<TaskMessage> findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtDesc(Long taskId, LocalDateTime createdAt);
 
     /**
-     * 获取指定任务的消息总数
+     * GetspecifiedTask message count
      */
     Long countByTaskId(Long taskId);
 }

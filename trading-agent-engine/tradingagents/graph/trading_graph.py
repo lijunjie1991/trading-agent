@@ -258,13 +258,13 @@ class TradingAgentsGraph:
         return self.signal_processor.process_signal(full_signal)
 
     def cleanup_memory(self):
-        """清理所有内存集合,释放资源,避免并发任务间的内存污染"""
+        """Clean up all memory collections,Release resources,Avoid memory pollution between concurrent tasks"""
         try:
             self.bull_memory.cleanup()
             self.bear_memory.cleanup()
             self.trader_memory.cleanup()
             self.invest_judge_memory.cleanup()
             self.risk_manager_memory.cleanup()
-            print("✅ 所有内存集合已清理")
+            print("✅ All memory collections cleaned up")
         except Exception as e:
-            print(f"⚠️ 清理内存时出错: {e}")
+            print(f"⚠️ Error cleaning up memory: {e}")

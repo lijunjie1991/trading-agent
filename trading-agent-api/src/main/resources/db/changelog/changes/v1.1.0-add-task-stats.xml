@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ChangeSet 5: Add statistics columns to tasks table -->
+    <changeSet id="5-add-task-statistics-columns" author="JunjieLi">
+        <comment>Add tool_calls, llm_calls, and reports columns to tasks table for real-time statistics tracking</comment>
+
+        <sql>
+            ALTER TABLE tasks
+            ADD COLUMN tool_calls INT NOT NULL DEFAULT 0,
+            ADD COLUMN llm_calls INT NOT NULL DEFAULT 0,
+            ADD COLUMN reports INT NOT NULL DEFAULT 0;
+        </sql>
+
+        <rollback>
+            ALTER TABLE tasks
+            DROP COLUMN tool_calls,
+            DROP COLUMN llm_calls,
+            DROP COLUMN reports;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,6 +1,6 @@
 """
 TradingAgents FastAPI Service
-提供HTTP API接口,包装TradingAgents核心功能
+ProvidesHTTP APIAPI interface,wrapperTradingAgents core functionality
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-# 导入TradingAgents核心组件
+# ImportTradingAgents core components
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
 
@@ -22,60 +22,60 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 from dotenv import load_dotenv
 
-# 导入数据库服务
-from db_service import update_task_status, save_report, save_task_message, test_connection
+# Import database services
+from db_service import update_task_status, save_report, save_task_message, test_connection, increment_task_stats
 
 load_dotenv()
 
-# 测试数据库连接
+# Test database connection
 print("🔄 Testing database connection...")
 if test_connection():
     print("✅ Database ready!")
 else:
     print("⚠️ Database connection failed, please check configuration")
 
-# ==================== 数据模型定义 ====================
+# ==================== Data model definitions ====================
 
 class AnalystType(str, Enum):
-    """分析师类型"""
+    """Analyst type"""
     MARKET = "market"
     SOCIAL = "social"
     NEWS = "news"
     FUNDAMENTALS = "fundamentals"
 
 class TaskStatus(str, Enum):
-    """任务状态"""
+    """TaskStatus"""
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
 
 class AnalysisRequest(BaseModel):
-    """分析请求模型"""
-    task_id: Optional[str] = Field(default=None, description="任务ID (由Java端提供)")
-    ticker: str = Field(..., description="股票代码", example="NVDA")
-    analysis_date: str = Field(..., description="分析日期 YYYY-MM-DD", example="2024-05-10")
+    """Analysis request model"""
+    task_id: Optional[str] = Field(default=None, description="TaskID (byJava sideProvides)")
+    ticker: str = Field(..., description="Stock ticker", example="NVDA")
+    analysis_date: str = Field(..., description="Analysis date YYYY-MM-DD", example="2024-05-10")
     selected_analysts: List[AnalystType] = Field(
         default=[AnalystType.MARKET, AnalystType.SOCIAL, AnalystType.NEWS, AnalystType.FUNDAMENTALS],
-        description="选择的分析师"
+        description="Selected analysts"
     )
-    research_depth: int = Field(default=1, ge=1, le=5, description="研究深度(辩论轮数)")
-    llm_provider: str = Field(default="openai", description="LLM提供商")
-    deep_think_llm: str = Field(default="gpt-4o-mini", description="深度思考模型")
-    quick_think_llm: str = Field(default="gpt-4o-mini", description="快速思考模型")
-    backend_url: str = Field(default=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"), description="LLM API地址")
-    openai_api_key: Optional[str] = Field(default=None, description="OpenAI API密钥(可选,优先使用环境变量)")
-    alpha_vantage_api_key: Optional[str] = Field(default=None, description="Alpha Vantage API密钥(可选)")
+    research_depth: int = Field(default=1, ge=1, le=5, description="Research depth(debate rounds)")
+    llm_provider: str = Field(default="openai", description="LLMProvides")
+    deep_think_llm: str = Field(default="gpt-4o-mini", description="Deep thinking model")
+    quick_think_llm: str = Field(default="gpt-4o-mini", description="Quick thinking model")
+    backend_url: str = Field(default=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"), description="LLM APIURL")
+    openai_api_key: Optional[str] = Field(default=None, description="OpenAI APIAPI key(optional,priorityUsingenvironment variable)")
+    alpha_vantage_api_key: Optional[str] = Field(default=None, description="Alpha Vantage APIAPI key(optional)")
 
 class AnalysisResponse(BaseModel):
-    """分析响应模型"""
+    """Analysis response model"""
     task_id: str
     status: TaskStatus
     message: str
     created_at: str
 
 class TaskDetailResponse(BaseModel):
-    """任务详情响应"""
+    """Taskdetailsresponse"""
     task_id: str
     status: TaskStatus
     ticker: str
@@ -88,12 +88,12 @@ class TaskDetailResponse(BaseModel):
     error_message: Optional[str] = None
 
 class ProgressMessage(BaseModel):
-    """进度消息模型"""
+    """Progress message model"""
     type: str  # status, message, tool_call, report
     timestamp: str
     data: Dict[str, Any]
 
-# ==================== 全局变量 ====================
+# ==================== Global variables ====================
 
 app = FastAPI(
     title="TradingAgents API",
@@ -101,52 +101,47 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS配置
+# CORSConfiguration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境需要限制
+    allow_origins=["*"],  # Production environment needs restrictions
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 线程池执行器 (用于真正的后台异步执行)
+# Thread pool executor (For true background async execution)
 from concurrent.futures import ThreadPoolExecutor
-executor = ThreadPoolExecutor(max_workers=4)  # 支持4个并发任务
+executor = ThreadPoolExecutor(max_workers=4)  # support4concurrentTask
 
-# ==================== 辅助函数 ====================
+# ==================== Helperfunction ====================
 
 def send_progress_sync(task_id: str, message_type: str, data: Dict[str, Any]):
-    """同步保存进度消息到数据库"""
-    # 将消息保存到数据库
+    """Synchronously save progress messages to database"""
+    # Save message to database
     try:
         save_task_message(task_id, message_type, data)
     except Exception as e:
-        print(f"⚠️ 保存消息到数据库失败 {task_id}: {e}")
+        print(f"⚠️ Failed to save message to database {task_id}: {e}")
 
-# ==================== 后台任务处理 ====================
+# ==================== BackgroundTaskprocessing ====================
 
 def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
-    """同步运行分析任务 (在独立线程中执行)"""
-    ta = None  # 初始化为None,用于finally块清理
-
-    # 统计指标
-    tool_call_count = 0
-    llm_call_count = 0
-    report_count = 0
+    """Run analysis synchronouslyTask (Execute in separate thread)"""
+    ta = None  # Initialize toNone,forfinallycleanup
 
     try:
-        # 更新任务状态到数据库（任务由Java端创建，应该已存在）
+        # Update task statusto database（TaskbyJava sideCreate，should already exist）
         if not update_task_status(task_id, "RUNNING"):
             print(f"❌ Task {task_id[:8]} not found in database, aborting")
             return
 
         send_progress_sync(task_id, "status", {
             "status": "running",
-            "message": f"开始分析 {request.ticker} on {request.analysis_date}"
+            "message": f"Start analysis {request.ticker} on {request.analysis_date}"
         })
 
-        # 配置API密钥(如果提供)
+        # ConfigurationAPIAPI key(ifProvides)
         original_openai_key = os.environ.get("OPENAI_API_KEY")
         original_av_key = os.environ.get("ALPHA_VANTAGE_API_KEY")
 
@@ -155,7 +150,7 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
         if request.alpha_vantage_api_key:
             os.environ["ALPHA_VANTAGE_API_KEY"] = request.alpha_vantage_api_key
 
-        # 创建配置
+        # Create configuration
         config = DEFAULT_CONFIG.copy()
         config["deep_think_llm"] = request.deep_think_llm
         config["quick_think_llm"] = request.quick_think_llm
@@ -164,13 +159,13 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
         config["llm_provider"] = request.llm_provider
         config["backend_url"] = request.backend_url
 
-        # 为每个任务设置唯一的内存前缀,避免并发任务间的内存污染
+        # For eachTaskSet unique memory prefix,Avoid memory pollution between concurrent tasks
         config["memory_prefix"] = f"task_{task_id[:8]}_"
 
-        print(f"🚀 初始化 TradingAgentsGraph, 分析师: {[a.value for a in request.selected_analysts]}")
-        print(f"📝 内存前缀: {config['memory_prefix']}")
+        print(f"🚀 Initialize TradingAgentsGraph, Analyst: {[a.value for a in request.selected_analysts]}")
+        print(f"📝 Memory prefix: {config['memory_prefix']}")
 
-        # 初始化TradingAgents
+        # InitializeTradingAgents
         ta = TradingAgentsGraph(
             selected_analysts=[analyst.value for analyst in request.selected_analysts],
             debug=True,
@@ -179,36 +174,36 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
 
         send_progress_sync(task_id, "status", {
             "status": "running",
-            "message": "TradingAgents 初始化完成"
+            "message": "TradingAgents Initialization complete"
         })
 
-        # 创建初始状态
+        # Create initialStatus
         init_state = ta.propagator.create_initial_state(
             request.ticker,
             request.analysis_date
         )
         args = ta.propagator.get_graph_args()
 
-        print(f"📊 开始流式执行分析...")
+        print(f"📊 Start streaming analysis...")
 
-        # 流式执行分析
+        # Stream analysis
         chunk_count = 0
         final_chunk = None
 
-        # 消息去重：记录已处理的消息ID
+        # Message deduplication：Track processed messagesID
         processed_message_ids = set()
 
         for chunk in ta.graph.stream(init_state, **args):
             chunk_count += 1
             final_chunk = chunk
 
-            # 检测当前活跃的节点/Agent
-            # LangGraph的chunk可能包含节点名称信息
+            # Detect currently active nodes/Agent
+            # LangGraph chunkmay contain node name information
             chunk_keys = list(chunk.keys())
             for key in chunk_keys:
-                # 发送节点激活信息
+                # Send node activation info
                 if key not in ["messages"] and chunk.get(key):
-                    # 映射节点名到Agent
+                    # Map node name toAgent
                     agent_mapping = {
                         "market_analyst": "market",
                         "social_analyst": "social",
@@ -230,36 +225,38 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                             "status": "running"
                         })
 
-            # 处理消息（只处理新消息，避免重复）
+            # Process messages（Only process new messages，Avoid duplicates）
             if len(chunk.get("messages", [])) > 0:
                 last_message = chunk["messages"][-1]
 
-                # 使用消息的 id 属性（如果有）或者对象 id 来去重
-                # LangGraph 消息通常有 id 属性
+                # Usingmessage id attribute（if exists）or object id for deduplication
+                # LangGraph Messageusually has id attribute
                 if hasattr(last_message, "id") and last_message.id:
                     message_id = last_message.id
                 else:
-                    # 如果没有id，使用内容hash作为唯一标识
+                    # if not existsid，Usingcontenthashas unique identifier
                     content_for_hash = str(getattr(last_message, "content", ""))
                     tool_calls_for_hash = str(getattr(last_message, "tool_calls", ""))
                     message_id = hash(content_for_hash + tool_calls_for_hash)
 
-                # 跳过已处理的消息
+                # Skip processed messages
                 if message_id in processed_message_ids:
                     continue
 
                 processed_message_ids.add(message_id)
-                llm_call_count += 1  # 每个新消息计数一次
 
-                # 检查是否有工具调用
+                # Increment LLM call counter in database
+                increment_task_stats(task_id, llm_calls=1)
+
+                # Check for tool calls
                 has_tool_calls = hasattr(last_message, "tool_calls") and last_message.tool_calls
 
-                # 提取内容
+                # Extract content
                 content = None
                 if hasattr(last_message, "content"):
                     content = last_message.content
                     if isinstance(content, list):
-                        # 处理Anthropic格式
+                        # Process Anthropic format
                         text_parts = []
                         for item in content:
                             if isinstance(item, dict) and item.get('type') == 'text':
@@ -268,39 +265,30 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
                     elif content:
                         content = str(content).strip()
 
-                # 策略：如果有工具调用，只保存工具调用；如果有有意义的内容，保存消息
+                # Strategy：If has tool calls，Only save tool calls；If has meaningful content，SaveMessage
                 if has_tool_calls:
-                    # 保存工具调用
+                    # Save tool calls and increment counter
                     for tool_call in last_message.tool_calls:
-                        tool_call_count += 1
-
                         tool_name = tool_call.get("name") if isinstance(tool_call, dict) else getattr(tool_call, "name", "unknown")
                         tool_args = tool_call.get("args") if isinstance(tool_call, dict) else getattr(tool_call, "args", {})
 
+                        # Increment tool call counter in database
+                        increment_task_stats(task_id, tool_calls=1)
+
                         send_progress_sync(task_id, "tool_call", {
                             "tool_name": tool_name,
-                            "args": tool_args,
-                            "stats": {
-                                "tool_calls": tool_call_count,
-                                "llm_calls": llm_call_count,
-                                "reports": report_count
-                            }
+                            "args": tool_args
                         })
 
-                # 如果有有意义的内容，也保存消息（即使有工具调用也保存内容）
+                # If has meaningful content，Also save message（Save content even if has tool calls）
                 if content and len(content) > 10:
-                    # 过滤掉系统消息和无用内容
+                    # Filter out system messages and useless content
                     if not any(skip in content.lower() for skip in ['system:', 'function:', 'tool response:']):
                         send_progress_sync(task_id, "message", {
-                            "content": content,
-                            "stats": {
-                                "tool_calls": tool_call_count,
-                                "llm_calls": llm_call_count,
-                                "reports": report_count
-                            }
+                            "content": content
                         })
 
-            # 处理报告（同时保存到report表和task_message表）
+            # Process reports（Also save to report table and task_message table）
             report_types = [
                 "market_report", "sentiment_report", "news_report",
                 "fundamentals_report", "investment_plan",
@@ -309,51 +297,47 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
 
             for report_type in report_types:
                 if report_type in chunk and chunk[report_type]:
-                    report_count += 1
+                    # Increment report counter in database
+                    increment_task_stats(task_id, reports=1)
 
-                    # 保存到 task_message 表（展示分析过程）
+                    # Save to task_message table（Show analysis process）
                     send_progress_sync(task_id, "report", {
                         "report_type": report_type,
-                        "content": chunk[report_type],
-                        "stats": {
-                            "tool_calls": tool_call_count,
-                            "llm_calls": llm_call_count,
-                            "reports": report_count
-                        }
+                        "content": chunk[report_type]
                     })
 
-                    # 同时保存到 report 表（结构化存储）
+                    # Also save to report table（Structured storage）
                     save_report(task_id, report_type, chunk[report_type])
 
-        print(f"✅ 分析完成,共处理 {chunk_count} 个chunk")
+        print(f"✅ Analysis completed,Processed {chunk_count} chunk")
 
-        # 获取最终决策
+        # Get final decision
         if final_chunk and "final_trade_decision" in final_chunk:
             decision = ta.process_signal(final_chunk["final_trade_decision"])
         else:
             decision = "UNKNOWN"
 
-        # 更新任务状态为完成（写入数据库）
+        # Update task statusto completed（write to database）
         update_task_status(task_id, "COMPLETED", final_decision=decision)
 
         send_progress_sync(task_id, "status", {
             "status": "completed",
             "decision": decision,
-            "message": f"分析完成! 决策: {decision}"
+            "message": f"Analysis completed! Decision: {decision}"
         })
 
-        # 恢复原始API密钥
+        # Restore originalAPIAPI key
         if original_openai_key:
             os.environ["OPENAI_API_KEY"] = original_openai_key
         if original_av_key:
             os.environ["ALPHA_VANTAGE_API_KEY"] = original_av_key
 
     except Exception as e:
-        print(f"❌ 分析任务失败: {str(e)}")
+        print(f"❌ AnalysisTaskFailed: {str(e)}")
         import traceback
         traceback.print_exc()
 
-        # 更新任务状态为失败（写入数据库）
+        # Update task statusto failed（write to database）
         if not update_task_status(task_id, "FAILED", error_message=str(e)):
             print(f"❌ Failed to update task {task_id[:8]} status to FAILED")
 
@@ -362,19 +346,19 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
             "error": str(e)
         })
     finally:
-        # 清理内存集合,释放资源,避免内存泄漏
+        # Clean up memory collections,Release resources,Avoid memory leaks
         if ta is not None:
             try:
                 ta.cleanup_memory()
-                print(f"🧹 任务 {task_id[:8]} 内存已清理")
+                print(f"🧹 Task {task_id[:8]} Memory cleaned up")
             except Exception as cleanup_error:
-                print(f"⚠️ 清理任务 {task_id[:8]} 内存时出错: {cleanup_error}")
+                print(f"⚠️ CleanupTask {task_id[:8]} error during memory: {cleanup_error}")
 
-# ==================== API端点 ====================
+# ==================== APIendpoint ====================
 
-@app.get("/", tags=["健康检查"])
+@app.get("/", tags=["Health Check"])
 async def root():
-    """根路径"""
+    """Root path"""
     return {
         "service": "TradingAgents API",
         "status": "running",
@@ -382,7 +366,7 @@ async def root():
         "docs": "/docs"
     }
 
-@app.get("/api/v1/health", tags=["健康检查"])
+@app.get("/api/v1/health", tags=["Health Check"])
 async def health_check():
     return {
         "status": "healthy",
@@ -390,51 +374,51 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
     }
 
-@app.post("/api/v1/analysis/start", response_model=AnalysisResponse, tags=["分析"])
+@app.post("/api/v1/analysis/start", response_model=AnalysisResponse, tags=["Analysis"])
 async def start_analysis(
     request: AnalysisRequest
 ):
     """
-    启动新的分析任务
+    Start new analysisTask
 
-    当由Java端调用时，task_id会在请求中提供（任务已在Java数据库中创建）
-    当直接调用时（测试），会自动生成task_id
+    When called byJava sidewhen calling，task_idwill be in requestProvides（Taskalready inJavacreated in database）
+    When called directly（testing），will be auto-generatedtask_id
 
-    - **task_id**: 任务ID（由Java端提供，或自动生成）
-    - **ticker**: 股票代码,如 NVDA, AAPL, TSLA
-    - **analysis_date**: 分析日期,格式 YYYY-MM-DD
-    - **selected_analysts**: 选择的分析师列表
-    - **research_depth**: 研究深度(辩论轮数), 1-5
+    - **task_id**: TaskID（byJava sideProvides，orauto-generated）
+    - **ticker**: Stock ticker,such as NVDA, AAPL, TSLA
+    - **analysis_date**: Analysis date,format YYYY-MM-DD
+    - **selected_analysts**: List of selected analysts
+    - **research_depth**: Research depth(debate rounds), 1-5
     """
-    # 使用Java提供的taskId，如果没有则生成新的（用于直接测试）
+    # UsingJavaProvidestaskId，Generate new if not exists（For direct testing）
     task_id = request.task_id if request.task_id else str(uuid.uuid4())
 
-    # 使用线程池异步执行任务 (真正的并发)
+    # UsingThread pool async executionTask (True concurrency)
     loop = asyncio.get_event_loop()
     loop.run_in_executor(executor, run_analysis_task_sync, task_id, request)
 
-    print(f"✨ {'接收' if request.task_id else '创建'}分析任务: {task_id} - {request.ticker} on {request.analysis_date}")
+    print(f"✨ {'Received' if request.task_id else 'Create'}AnalysisTask: {task_id} - {request.ticker} on {request.analysis_date}")
 
     return AnalysisResponse(
         task_id=task_id,
         status=TaskStatus.PENDING,
-        message=f"分析任务已{'接收' if request.task_id else '创建'}: {request.ticker}",
+        message=f"AnalysisTaskalready{'Received' if request.task_id else 'Create'}: {request.ticker}",
         created_at=datetime.now().isoformat()
     )
 
-@app.get("/api/v1/analysis/{task_id}", response_model=TaskDetailResponse, tags=["分析"])
+@app.get("/api/v1/analysis/{task_id}", response_model=TaskDetailResponse, tags=["Analysis"])
 async def get_task_detail(task_id: str):
     """
-    获取任务详情（从数据库读取）
+    GetTaskdetails（Read from database）
     """
     from db_service import get_task_by_uuid
     import json
 
     task = get_task_by_uuid(task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+        raise HTTPException(status_code=404, detail="Tasknot found")
 
-    # 解析 JSON 字段
+    # Parse JSON field
     selected_analysts = json.loads(task.selected_analysts) if task.selected_analysts else []
 
     return TaskDetailResponse(
@@ -450,19 +434,19 @@ async def get_task_detail(task_id: str):
         error_message=task.error_message
     )
 
-@app.get("/api/v1/analysis/{task_id}/reports", tags=["分析"])
+@app.get("/api/v1/analysis/{task_id}/reports", tags=["Analysis"])
 async def get_task_reports(task_id: str):
     """
-    获取任务的所有报告（从数据库读取）
+    GetTask reports（Read from database）
     """
     from db_service import get_task_by_uuid
     from database import get_db_session, Report
 
     task = get_task_by_uuid(task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="任务不存在")
+        raise HTTPException(status_code=404, detail="Tasknot found")
 
-    # 获取报告
+    # Get reports
     db = get_db_session()
     try:
         reports = db.query(Report).filter(Report.task_id == task.id).all()
@@ -477,11 +461,11 @@ async def get_task_reports(task_id: str):
     finally:
         db.close()
 
-@app.get("/api/v1/tasks", tags=["分析"])
+@app.get("/api/v1/tasks", tags=["Analysis"])
 async def list_tasks(status: Optional[TaskStatus] = None, limit: int = 20):
     """
-    列出所有任务（从数据库读取）
-    注意：此端点返回 Python 内部数据，Java 端应使用自己的 API
+    List allTask（Read from database）
+    Note：This endpoint returns Python internal data，Java side shouldUsingown API
     """
     from database import get_db_session, Task
     import json
@@ -493,7 +477,7 @@ async def list_tasks(status: Optional[TaskStatus] = None, limit: int = 20):
         if status:
             query = query.filter(Task.status == status.value.upper())
 
-        # 按创建时间倒序
+        # Order by creation time descending
         query = query.order_by(Task.created_at.desc()).limit(limit)
         tasks = query.all()
 
@@ -520,7 +504,7 @@ async def list_tasks(status: Optional[TaskStatus] = None, limit: int = 20):
     finally:
         db.close()
 
-# ==================== 启动配置 ====================
+# ==================== Startup configuration ====================
 
 if __name__ == "__main__":
     import uvicorn

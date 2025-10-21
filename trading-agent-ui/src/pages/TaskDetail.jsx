@@ -93,19 +93,21 @@ const TaskDetail = () => {
     })
   }, [messages.length])
 
-  const handleMessage = (msg) => {
-    const { messageType, content } = msg
-
-    // Update stats
-    if (content.stats) {
+  // Update stats from currentTask when task data refreshes
+  useEffect(() => {
+    if (currentTask) {
       dispatch(
         updateStats({
-          toolCalls: content.stats.tool_calls || 0,
-          llmCalls: content.stats.llm_calls || 0,
-          reports: content.stats.reports || 0,
+          toolCalls: currentTask.toolCalls || currentTask.tool_calls || 0,
+          llmCalls: currentTask.llmCalls || currentTask.llm_calls || 0,
+          reports: currentTask.reports || 0,
         })
       )
     }
+  }, [currentTask, dispatch])
+
+  const handleMessage = (msg) => {
+    const { messageType, content } = msg
 
     // Handle different message types
     switch (messageType) {

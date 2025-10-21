@@ -161,7 +161,7 @@ public class TaskService {
 
         List<TaskMessage> messages;
         if (lastTimestamp != null && !lastTimestamp.isEmpty()) {
-            // 增量查询：只获取新消息（降序，最新的在前面）
+            // Incremental query：Get only new messages（Descending order，Latest first）
             // Parse ISO 8601 format (with or without timezone)
             LocalDateTime timestamp;
             try {
@@ -175,7 +175,7 @@ public class TaskService {
             messages = taskMessageRepository.findByTaskIdAndCreatedAtGreaterThanOrderByCreatedAtDesc(
                     task.getId(), timestamp);
         } else {
-            // 全量查询：获取所有消息（降序，最新的在前面）
+            // Full query：Get all messages（Descending order，Latest first）
             messages = taskMessageRepository.findByTaskIdOrderByCreatedAtDesc(task.getId());
         }
 
@@ -204,6 +204,9 @@ public class TaskService {
                 .errorMessage(task.getErrorMessage())
                 .createdAt(task.getCreatedAt())
                 .completedAt(task.getCompletedAt())
+                .toolCalls(task.getToolCalls())
+                .llmCalls(task.getLlmCalls())
+                .reports(task.getReports())
                 .build();
     }
 

@@ -37,11 +37,11 @@ if "azure.com" in DB_HOST:
 # Create engine
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,      # 验证连接有效性
-    pool_recycle=3600,       # 每小时回收连接
-    pool_size=5,             # 连接池大小
-    max_overflow=10,         # 最大溢出连接数
-    echo=False,              # 生产环境关闭SQL日志
+    pool_pre_ping=True,      # Validate connection validity
+    pool_recycle=3600,       # Recycle connections hourly
+    pool_size=5,             # Connection pool size
+    max_overflow=10,         # Max overflow connections
+    echo=False,              # Disabled in productionSQLlogs
     connect_args=connect_args
 )
 
@@ -53,7 +53,7 @@ Base = declarative_base()
 
 
 class User(Base):
-    """用户表 - 对应 Java User 实体"""
+    """User table - Corresponds to Java User entity"""
     __tablename__ = "users"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -67,7 +67,7 @@ class User(Base):
 
 
 class Task(Base):
-    """任务表 - 对应 Java Task 实体"""
+    """Tasktable - Corresponds to Java Task entity"""
     __tablename__ = "tasks"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -83,13 +83,18 @@ class Task(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime)
 
+    # Statistics fields for real-time tracking
+    tool_calls = Column(Integer, default=0, nullable=False)
+    llm_calls = Column(Integer, default=0, nullable=False)
+    reports = Column(Integer, default=0, nullable=False)
+
     # Relationships
     user = relationship("User", back_populates="tasks")
-    reports = relationship("Report", back_populates="task", cascade="all, delete-orphan")
+    reports_list = relationship("Report", back_populates="task", cascade="all, delete-orphan")
 
 
 class Report(Base):
-    """报告表 - 对应 Java Report 实体"""
+    """Report table - Corresponds to Java Report entity"""
     __tablename__ = "reports"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -103,7 +108,7 @@ class Report(Base):
 
 
 class TaskMessage(Base):
-    """任务消息表 - 用于存储分析过程中产生的消息"""
+    """TaskMessage table - Used to store messages generated during analysis"""
     __tablename__ = "task_messages"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
@@ -117,7 +122,7 @@ class TaskMessage(Base):
 
 
 def get_db():
-    """获取数据库会话"""
+    """Get database session"""
     db = SessionLocal()
     try:
         yield db
@@ -126,5 +131,5 @@ def get_db():
 
 
 def get_db_session():
-    """直接获取数据库会话（用于非FastAPI场景）"""
+    """Get database session directly（for non-FastAPIscenarios）"""
     return SessionLocal()

@@ -61,7 +61,20 @@ public class Task {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    // Statistics fields for real-time tracking
+    @Column(name = "tool_calls", nullable = false)
+    @Builder.Default
+    private Integer toolCalls = 0;
+
+    @Column(name = "llm_calls", nullable = false)
+    @Builder.Default
+    private Integer llmCalls = 0;
+
+    @Column(name = "reports", nullable = false)
+    @Builder.Default
+    private Integer reports = 0;
+
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<Report> reports = new ArrayList<>();
+    private List<Report> reportList = new ArrayList<>();
 }

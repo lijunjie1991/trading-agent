@@ -68,12 +68,12 @@ class FinancialSituationMemory:
         return matched_results
 
     def cleanup(self):
-        """清理内存集合,释放资源"""
+        """Clean up memory collections,Release resources"""
         try:
             self.chroma_client.delete_collection(name=self.collection_name)
-            print(f"✅ 清理内存集合: {self.collection_name}")
+            print(f"✅ Clean up memory collections: {self.collection_name}")
         except Exception as e:
-            print(f"⚠️ 清理内存集合失败 [{self.collection_name}]: {e}")
+            print(f"⚠️ Clean up memory collectionsFailed [{self.collection_name}]: {e}")
 
 
 if __name__ == "__main__":

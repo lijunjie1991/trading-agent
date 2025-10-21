@@ -6,6 +6,7 @@ from database import get_db_session, Task, Report, TaskMessage
 from datetime import datetime
 from typing import Optional, Dict, Any
 import json
+from sqlalchemy import text
 
 
 def update_task_status(
@@ -15,13 +16,13 @@ def update_task_status(
     error_message: Optional[str] = None
 ):
     """
-    更新任务状态
+    Update task status
 
     Args:
-        task_id: 任务UUID
-        status: 状态 (PENDING, RUNNING, COMPLETED, FAILED)
-        final_decision: 最终决策
-        error_message: 错误消息
+        task_id: TaskUUID
+        status: Status (PENDING, RUNNING, COMPLETED, FAILED)
+        final_decision: Final decision
+        error_message: Error message
     """
     db = get_db_session()
     try:
@@ -43,9 +44,9 @@ def update_task_status(
 
         if error_message:
             task.error_message = error_message
-            print(f"   Error message: {error_message[:100]}...")  # 打印前100个字符
+            print(f"   Error message: {error_message[:100]}...")  # Print first100characters
 
-        # 如果任务完成或失败，设置完成时间
+        # ifTaskcompleted or failed，Set completion time
         if status.upper() in ["COMPLETED", "FAILED"]:
             task.completed_at = datetime.utcnow()
 
@@ -65,24 +66,24 @@ def update_task_status(
 
 def save_report(task_id: str, report_type: str, content: str):
     """
-    保存任务报告
+    SaveTaskReport
 
     Args:
-        task_id: 任务UUID
-        report_type: 报告类型
-        content: 报告内容
+        task_id: TaskUUID
+        report_type: Report type
+        content: Report content
     """
     db = get_db_session()
     try:
-        # 先通过 task_id (UUID) 查找任务
+        # First by task_id (UUID) FindTask
         task = db.query(Task).filter(Task.task_id == task_id).first()
         if not task:
             print(f"⚠️ Task not found: {task_id}")
             return False
 
-        # 创建报告，使用数据库主键 id
+        # Create report，UsingDatabase primary key id
         report = Report(
-            task_id=task.id,  # 使用数据库主键，不是UUID
+            task_id=task.id,  # UsingDatabase primary key，notUUID
             report_type=report_type,
             content=content
         )
@@ -102,13 +103,13 @@ def save_report(task_id: str, report_type: str, content: str):
 
 def get_task_by_uuid(task_id: str):
     """
-    通过UUID获取任务
+    byUUIDGetTask
 
     Args:
-        task_id: 任务UUID
+        task_id: TaskUUID
 
     Returns:
-        Task对象或None
+        TaskobjectorNone
     """
     db = get_db_session()
     try:
@@ -120,24 +121,24 @@ def get_task_by_uuid(task_id: str):
 
 def save_task_message(task_id: str, message_type: str, content: Dict[Any, Any]):
     """
-    保存任务消息到数据库
+    SaveTaskmessage to database
 
     Args:
-        task_id: 任务UUID
-        message_type: 消息类型 (status, message, tool_call, report, agent_status)
-        content: 消息内容 (字典)
+        task_id: TaskUUID
+        message_type: Message type (status, message, tool_call, report, agent_status)
+        content: Message content (dictionary)
     """
     db = get_db_session()
     try:
-        # 先通过 task_id (UUID) 查找任务
+        # First by task_id (UUID) FindTask
         task = db.query(Task).filter(Task.task_id == task_id).first()
         if not task:
             print(f"⚠️ Task not found: {task_id}")
             return False
 
-        # 创建消息记录
+        # Create message record
         message = TaskMessage(
-            task_id=task.id,  # 使用数据库主键
+            task_id=task.id,  # UsingDatabase primary key
             message_type=message_type,
             content=content
         )
@@ -155,11 +156,11 @@ def save_task_message(task_id: str, message_type: str, content: Dict[Any, Any]):
 
 
 def test_connection():
-    """测试数据库连接"""
+    """Test database connection"""
     try:
         from sqlalchemy import text
         db = get_db_session()
-        # 执行简单查询
+        # Execute simple query
         result = db.execute(text("SELECT 1")).fetchone()
         db.close()
         print("✅ Database connection successful!")
@@ -167,3 +168,60 @@ def test_connection():
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
         return False
+
+
+def increment_task_stats(
+    task_id: str,
+    tool_calls: int = 0,
+    llm_calls: int = 0,
+    reports: int = 0
+):
+    """
+    Atomically increment task statistics using database-level operations
+    This ensures thread-safety for concurrent task processing
+
+    Args:
+        task_id: Task UUID
+        tool_calls: Number of tool calls to increment
+        llm_calls: Number of LLM calls to increment
+        reports: Number of reports to increment
+
+    Returns:
+        bool: Success status
+    """
+    db = get_db_session()
+    try:
+        # First get the task to find database primary key
+        task = db.query(Task).filter(Task.task_id == task_id).first()
+        if not task:
+            print(f"⚠️ Task not found: {task_id}")
+            return False
+
+        # Use atomic SQL UPDATE to increment counters
+        # This is thread-safe even with concurrent updates
+        update_sql = text("""
+            UPDATE tasks
+            SET tool_calls = tool_calls + :tool_calls,
+                llm_calls = llm_calls + :llm_calls,
+                reports = reports + :reports
+            WHERE id = :task_id
+        """)
+
+        db.execute(update_sql, {
+            'tool_calls': tool_calls,
+            'llm_calls': llm_calls,
+            'reports': reports,
+            'task_id': task.id
+        })
+
+        db.commit()
+        return True
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error incrementing task stats for {task_id[:8]}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    finally:
+        db.close()

@@ -152,7 +152,7 @@ const taskSlice = createSlice({
           state.messages = state.messages.slice(0, 100)
         }
 
-        // Update last timestamp (最新消息的时间戳 - 第一个消息是最新的)
+        // Update last timestamp (Timestamp of the latest message - The first message is the latest)
         const latestMessage = newMessages[0]
         if (latestMessage && latestMessage.createdAt) {
           state.lastTimestamp = latestMessage.createdAt
@@ -295,7 +295,7 @@ const taskSlice = createSlice({
           state.messages = state.messages.slice(0, 100)
         }
 
-        // Update last timestamp (最新消息的时间戳 - 第一个消息是最新的)
+        // Update last timestamp (Timestamp of the latest message - The first message is the latest)
         const latestMessage = messages[0]
         if (latestMessage && latestMessage.createdAt) {
           state.lastTimestamp = latestMessage.createdAt

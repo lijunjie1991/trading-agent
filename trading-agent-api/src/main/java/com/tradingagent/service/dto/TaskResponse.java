@@ -25,4 +25,9 @@ public class TaskResponse {
     private String errorMessage;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
+
+    // Statistics fields
+    private Integer toolCalls;
+    private Integer llmCalls;
+    private Integer reports;
 }

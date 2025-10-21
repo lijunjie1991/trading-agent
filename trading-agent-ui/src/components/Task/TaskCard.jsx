@@ -31,7 +31,7 @@ const TaskCard = ({ task }) => {
   const completedAt = task.completedAt || task.completed_at
   const errorMessage = task.errorMessage || task.error_message
 
-  // 状态图标映射
+  // Status icon mapping
   const statusIcons = {
     PENDING: <ClockCircleOutlined />,
     RUNNING: <SyncOutlined spin />,
@@ -39,7 +39,7 @@ const TaskCard = ({ task }) => {
     FAILED: <CloseCircleOutlined />,
   }
 
-  // 深度描述映射
+  // Depth description mapping
   const depthLabels = {
     1: 'Shallow',
     2: 'Medium',
@@ -48,7 +48,7 @@ const TaskCard = ({ task }) => {
     5: 'Maximum',
   }
 
-  // 计算任务耗时 (使用 helper 函数，支持 UTC 转换)
+  // Calculate task duration (Using helper function，support UTC conversion)
   const getDuration = () => {
     if (!completedAt) return null
     const createdAt = task.createdAt || task.created_at
