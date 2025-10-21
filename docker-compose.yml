@@ -80,10 +80,9 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
 
       # Database
-      DB_URL: ${MYSQL_URL:-jdbc:mysql://mysql:3306/tradingagent?useSSL=true&requireSSL=true&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000}
+      DB_URL: ${MYSQL_URL:-jdbc:mysql://mysql:3306/tradingagent?useSSL=false&requireSSL=false&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000}
       DB_USERNAME: ${MYSQL_USER:-hamsa}
       DB_PASSWORD: ${MYSQL_PASSWORD:-dev@2023}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-tradingagent}?useSSL=true&requireSSL=false&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000
 
       # JWT
       JWT_SECRET: ${JWT_SECRET:-your-production-secret-key-must-be-at-least-256-bits-long-change-this}

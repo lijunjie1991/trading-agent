@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: trading-agent
+
+  # MySQL Database Configuration (Production)
+  datasource:
+    url: ${DB_URL:jdbc:mysql://hamsa-db-dev.mysql.database.azure.com:3306/tradingagent?useSSL=true&requireSSL=true&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:hamsa}
+    password: ${DB_PASSWORD:dev@2023}
+    hikari:
+      maximum-pool-size: 100
+      minimum-idle: 5
+      connection-timeout: 60000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: none  # Disable auto DDL in production
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Liquibase Configuration
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+    default-schema: tradingagent
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:your-production-secret-key-must-be-at-least-256-bits-long-change-this}
+  expiration: 86400000  # 24 hours in milliseconds
+
+# Python Service Configuration
+python:
+  service:
+    url: ${PYTHON_SERVICE_URL:http://98.82.131.247:8000}
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+
+# CORS Configuration
+cors:
+  allowedOrigins:
+    - *
+  allowedMethods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowedHeaders:
+    - "*"
+  allowCredentials: true
+
+# Logging Configuration
+# Detailed logging configuration is in logback-spring.xml
+logging:
+  config: classpath:logback-spring.xml
