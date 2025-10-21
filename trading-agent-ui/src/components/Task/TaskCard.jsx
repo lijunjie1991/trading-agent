@@ -9,7 +9,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { getStatusColor, formatDateTime, getDecisionBadgeStatus } from '../../utils/helpers'
+import { getStatusColor, formatDateTime, getDecisionBadgeStatus, calculateDuration } from '../../utils/helpers'
 
 const { Text } = Typography
 
@@ -48,17 +48,11 @@ const TaskCard = ({ task }) => {
     5: 'Maximum',
   }
 
-  // 计算任务耗时
+  // 计算任务耗时 (使用 helper 函数，支持 UTC 转换)
   const getDuration = () => {
     if (!completedAt) return null
-    const created = new Date(task.createdAt || task.created_at)
-    const completed = new Date(completedAt)
-    const seconds = Math.floor((completed - created) / 1000)
-    if (seconds < 60) return `${seconds}s`
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    return `${hours}h ${minutes % 60}m`
+    const createdAt = task.createdAt || task.created_at
+    return calculateDuration(createdAt, completedAt)
   }
 
   return (

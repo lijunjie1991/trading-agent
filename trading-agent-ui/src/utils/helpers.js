@@ -1,35 +1,54 @@
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { DATE_FORMAT, DATETIME_FORMAT, TIME_FORMAT } from './constants'
 
+// Enable UTC and timezone plugins
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
 /**
- * Format date to string
+ * Parse UTC time string and convert to local timezone
+ * Backend returns UTC time, we need to display in user's local timezone
  */
-export const formatDate = (date, format = DATE_FORMAT) => {
-  if (!date) return ''
-  return dayjs(date).format(format)
+const parseUTCToLocal = (utcTimeString) => {
+  if (!utcTimeString) return null
+  // Parse as UTC and convert to local timezone
+  return dayjs.utc(utcTimeString).local()
 }
 
 /**
- * Format datetime to string
+ * Format date to string (with UTC to local conversion)
+ */
+export const formatDate = (date, format = DATE_FORMAT) => {
+  if (!date) return ''
+  const localDate = parseUTCToLocal(date)
+  return localDate ? localDate.format(format) : ''
+}
+
+/**
+ * Format datetime to string (with UTC to local conversion)
  */
 export const formatDateTime = (date) => {
   return formatDate(date, DATETIME_FORMAT)
 }
 
 /**
- * Format time to string
+ * Format time to string (with UTC to local conversion)
  */
 export const formatTime = (date) => {
   return formatDate(date, TIME_FORMAT)
 }
 
 /**
- * Get relative time (e.g., "2 hours ago")
+ * Get relative time (e.g., "2 hours ago") (with UTC to local conversion)
  */
 export const getRelativeTime = (date) => {
   if (!date) return ''
   const now = dayjs()
-  const target = dayjs(date)
+  const target = parseUTCToLocal(date)
+  if (!target) return ''
+
   const diffMs = now.diff(target)
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
@@ -225,12 +244,14 @@ export const getMessageTypeLabel = (type) => {
 }
 
 /**
- * Calculate task duration
+ * Calculate task duration (with UTC to local conversion)
  */
 export const calculateDuration = (startTime, endTime) => {
   if (!startTime) return 'N/A'
-  const start = dayjs(startTime)
-  const end = endTime ? dayjs(endTime) : dayjs()
+  const start = parseUTCToLocal(startTime)
+  const end = endTime ? parseUTCToLocal(endTime) : dayjs()
+  if (!start) return 'N/A'
+
   const diffMs = end.diff(start)
 
   const seconds = Math.floor(diffMs / 1000)
