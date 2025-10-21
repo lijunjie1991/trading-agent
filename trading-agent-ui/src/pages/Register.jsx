@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Card, Typography, Space } from 'antd'
-import { RocketOutlined } from '@ant-design/icons'
 import RegisterForm from '../components/Auth/RegisterForm'
 import { register, clearError } from '../store/slices/authSlice'
 
@@ -52,11 +51,33 @@ const Register = () => {
       >
         <Space direction="vertical" size={24} style={{ width: '100%', textAlign: 'center' }}>
           <div>
-            <RocketOutlined style={{ fontSize: 48, color: '#667eea', marginBottom: 16 }} />
+            <div
+              style={{
+                width: 80,
+                height: 80,
+                margin: '0 auto 16px',
+                borderRadius: 16,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 24px rgba(102, 126, 234, 0.3)',
+              }}
+            >
+              <img
+                src="/logo.png"
+                alt="Logo"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </div>
             <Title level={2} style={{ margin: 0 }}>
               Create Account
             </Title>
-            <Text type="secondary">Join TradingAgents Platform</Text>
+            <Text type="secondary">Join Quantum Husky Platform</Text>
           </div>
 
           <RegisterForm onSubmit={handleRegister} loading={loading} error={error} />
