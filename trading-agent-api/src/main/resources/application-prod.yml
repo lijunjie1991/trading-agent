@@ -49,7 +49,7 @@ server:
 # CORS Configuration
 cors:
   allowedOrigins:
-    - *
+    - '*'
   allowedMethods:
     - GET
     - POST
