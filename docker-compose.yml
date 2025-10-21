@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: trading-agent-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-tradingagent}
+      MYSQL_USER: ${MYSQL_USER:-hamsa}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dev@2023}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - trading-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Trading Agent Engine (Python FastAPI)
+  engine:
+    build:
+      context: ./trading-agent-engine
+      dockerfile: Dockerfile
+    container_name: trading-agent-engine
+    restart: unless-stopped
+    ports:
+      - "${ENGINE_PORT:-8000}:8000"
+    environment:
+      # Database
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE:-tradingagent}
+      DB_USER: ${MYSQL_USER:-hamsa}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-dev@2023}
+
+      # LLM API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+
+      # Data APIs
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      EODHD_API_KEY: ${EODHD_API_KEY}
+      TUSHARE_TOKEN: ${TUSHARE_TOKEN}
+
+      # Reddit API
+      REDDIT_CLIENT_ID: ${REDDIT_CLIENT_ID}
+      REDDIT_CLIENT_SECRET: ${REDDIT_CLIENT_SECRET}
+      REDDIT_USER_AGENT: ${REDDIT_USER_AGENT:-TradingAgent/1.0}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - trading-network
+    volumes:
+      - ./trading-agent-engine:/app
+      - engine_cache:/app/.cache
+
+  # Trading Agent API (Spring Boot)
+  api:
+    build:
+      context: ./trading-agent-api
+      dockerfile: Dockerfile
+    container_name: trading-agent-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+
+      # Database
+      DB_URL: ${MYSQL_URL:-jdbc:mysql://mysql:3306/tradingagent?useSSL=true&requireSSL=true&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000}
+      DB_USERNAME: ${MYSQL_USER:-hamsa}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-dev@2023}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-tradingagent}?useSSL=true&requireSSL=false&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-production-secret-key-must-be-at-least-256-bits-long-change-this}
+
+      # Python Service
+      PYTHON_SERVICE_URL: http://engine:8000
+
+      # Server
+      SERVER_PORT: 8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+      engine:
+        condition: service_started
+    networks:
+      - trading-network
+
+  # Trading Agent UI (React + Vite + Nginx)
+  ui:
+    build:
+      context: ./trading-agent-ui
+      dockerfile: Dockerfile
+    container_name: trading-agent-ui
+    restart: unless-stopped
+    ports:
+      - "${UI_PORT:-80}:80"
+    depends_on:
+      - api
+    networks:
+      - trading-network
+
+networks:
+  trading-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  engine_cache:
+    driver: local

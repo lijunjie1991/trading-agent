@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.iml
+*.iws
+*.ipr
+
+# Build outputs
+target/
+build/
+out/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+docs/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml

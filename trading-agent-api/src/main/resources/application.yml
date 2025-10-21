@@ -4,7 +4,7 @@ spring:
 
   # MySQL Database Configuration (Production)
   datasource:
-    url: jdbc:mysql://hamsa-db-dev.mysql.database.azure.com:3306/tradingagent?useSSL=true&requireSSL=true&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000
+    url: ${DB_HOST:jdbc:mysql://hamsa-db-dev.mysql.database.azure.com:3306/tradingagent?useSSL=true&requireSSL=true&verifyServerCertificate=false&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000}
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME:hamsa}
     password: ${DB_PASSWORD:dev@2023}
@@ -41,8 +41,6 @@ jwt:
 python:
   service:
     url: ${PYTHON_SERVICE_URL:http://98.82.131.247:8000}
-    websocket:
-      base-url: ${PYTHON_WS_URL:ws://98.82.131.247:8000/ws/analysis}
 
 # Server Configuration
 server:
@@ -51,8 +49,7 @@ server:
 # CORS Configuration
 cors:
   allowedOrigins:
-    - ${CORS_ORIGIN_1:http://localhost:3000}
-    - ${CORS_ORIGIN_2:http://localhost:5173}
+    - *
   allowedMethods:
     - GET
     - POST

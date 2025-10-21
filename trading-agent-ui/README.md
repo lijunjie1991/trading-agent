@@ -85,16 +85,22 @@ frontend/
    npm install
    ```
 
-2. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
+2. **Configure backend API URL** (if different from default):
+
+   **For local development**, edit `vite.config.js`:
+   ```javascript
+   server: {
+     proxy: {
+       '/api': {
+         target: 'http://localhost:8080',  // Change to your backend URL
+         changeOrigin: true,
+         secure: false,
+       }
+     }
+   }
    ```
 
-   Edit `.env` if needed (defaults to `localhost:8080`):
-   ```env
-   VITE_API_BASE_URL=http://localhost:8080
-   VITE_WS_BASE_URL=ws://localhost:8080
-   ```
+   **For Docker deployment**, no configuration needed! The `nginx.conf` handles API routing automatically.
 
 ## Development
 
@@ -105,6 +111,11 @@ npm run dev
 ```
 
 The application will be available at `http://localhost:3000`
+
+**Backend API Configuration:**
+- Development mode uses Vite proxy configured in `vite.config.js`
+- Production/Docker uses Nginx proxy configured in `nginx.conf`
+- Frontend always makes requests to `/api/*` (relative paths)
 
 ## Build
 
@@ -243,12 +254,34 @@ Redux slices:
 - Workflow progress
 - Statistics
 
-## Environment Variables
+## Backend API Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| VITE_API_BASE_URL | Backend API URL | http://localhost:8080 |
-| VITE_WS_BASE_URL | WebSocket URL | ws://localhost:8080 |
+### Local Development
+- **File**: `vite.config.js`
+- **Method**: Vite development server proxy
+- **Configuration**:
+  ```javascript
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8080',  // Backend URL
+      changeOrigin: true,
+      secure: false,
+    }
+  }
+  ```
+
+### Docker/Production
+- **File**: `nginx.conf`
+- **Method**: Nginx reverse proxy
+- **Configuration**:
+  ```nginx
+  location /api {
+      proxy_pass http://api:8080;  // Docker service name
+      # ... proxy headers
+  }
+  ```
+
+**Important**: No environment variables needed for API URLs. Frontend always uses relative paths (`/api/*`), and the proxy handles routing.
 
 ## Browser Support
 
