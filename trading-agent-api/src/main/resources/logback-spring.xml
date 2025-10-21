@@ -90,14 +90,16 @@
     </springProfile>
 
     <springProfile name="prod">
-        <!-- Production: File only with INFO level -->
+        <!-- Production: Console + File with INFO level (Docker friendly) -->
         <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE"/>
             <appender-ref ref="ASYNC_ERROR"/>
         </root>
 
         <!-- Application specific logging -->
         <logger name="com.tradingagent" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_FILE"/>
             <appender-ref ref="ASYNC_ERROR"/>
         </logger>
