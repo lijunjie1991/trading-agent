@@ -384,20 +384,10 @@ async def root():
 
 @app.get("/api/v1/health", tags=["健康检查"])
 async def health_check():
-    """健康检查"""
-    from database import get_db_session, Task
-
-    db = get_db_session()
-    try:
-        active_tasks = db.query(Task).filter(Task.status.in_(["PENDING", "RUNNING"])).count()
-    finally:
-        db.close()
-
     return {
         "status": "healthy",
         "service": "TradingAgents API",
         "timestamp": datetime.now().isoformat(),
-        "active_tasks": active_tasks
     }
 
 @app.post("/api/v1/analysis/start", response_model=AnalysisResponse, tags=["分析"])
