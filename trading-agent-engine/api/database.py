@@ -104,7 +104,7 @@ class Report(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationship
-    task = relationship("Task", back_populates="reports")
+    task = relationship("Task", back_populates="reports_list")
 
 
 class TaskMessage(Base):
