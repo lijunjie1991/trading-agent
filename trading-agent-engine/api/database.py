@@ -86,7 +86,7 @@ class Task(Base):
     # Statistics fields for real-time tracking
     tool_calls = Column(Integer, default=0, nullable=False)
     llm_calls = Column(Integer, default=0, nullable=False)
-    reports = Column(Integer, default=0, nullable=False)
+    reports_count = Column('reports', Integer, default=0, nullable=False)  # Column name is 'reports', attribute name is 'reports_count'
 
     # Relationships
     user = relationship("User", back_populates="tasks")

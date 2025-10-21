@@ -23,7 +23,14 @@ from tradingagents.default_config import DEFAULT_CONFIG
 from dotenv import load_dotenv
 
 # Import database services
-from db_service import update_task_status, save_report, save_task_message, test_connection, increment_task_stats
+from db_service import (
+    update_task_status,
+    save_report,
+    save_task_message,
+    test_connection,
+    increment_task_stats,
+    update_task_status_raw_sql
+)
 
 load_dotenv()
 
@@ -131,9 +138,12 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest):
     ta = None  # Initialize toNone,forfinallycleanup
 
     try:
-        # Update task statusto database（TaskbyJava sideCreate，should already exist）
+        # Update task status to database (Task created by Java side, should already exist)
         if not update_task_status(task_id, "RUNNING"):
-            print(f"❌ Task {task_id[:8]} not found in database, aborting")
+            # If ORM fails (e.g., SQLAlchemy relationship error), use raw SQL fallback
+            error_msg = f"Failed to initialize task - database error or task not found"
+            print(f"❌ Task {task_id[:8]} - ORM update failed, trying raw SQL fallback")
+            update_task_status_raw_sql(task_id, "FAILED", error_message=error_msg)
             return
 
         send_progress_sync(task_id, "status", {

@@ -170,6 +170,55 @@ def test_connection():
         return False
 
 
+def update_task_status_raw_sql(task_id: str, status: str, error_message: str = None):
+    """
+    Update task status using raw SQL (bypasses ORM, used as fallback when ORM fails)
+
+    Args:
+        task_id: Task UUID
+        status: Status value
+        error_message: Error message (optional)
+
+    Returns:
+        bool: Success status
+    """
+    db = get_db_session()
+    try:
+        if error_message:
+            sql = text("""
+                UPDATE tasks
+                SET status = :status,
+                    error_message = :error_message,
+                    completed_at = NOW()
+                WHERE task_id = :task_id
+            """)
+            db.execute(sql, {
+                'status': status.upper(),
+                'error_message': error_message,
+                'task_id': task_id
+            })
+        else:
+            sql = text("""
+                UPDATE tasks
+                SET status = :status
+                WHERE task_id = :task_id
+            """)
+            db.execute(sql, {
+                'status': status.upper(),
+                'task_id': task_id
+            })
+
+        db.commit()
+        print(f"✅ [RAW SQL] Updated task {task_id[:8]} status to {status}")
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"❌ [RAW SQL] Error updating task status for {task_id[:8]}: {e}")
+        return False
+    finally:
+        db.close()
+
+
 def increment_task_stats(
     task_id: str,
     tool_calls: int = 0,
