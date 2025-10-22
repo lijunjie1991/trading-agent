@@ -157,7 +157,7 @@ const TaskDetail = () => {
       {/* Two-Column Layout */}
       <Row gutter={24}>
         {/* Left Column: Main Content (Messages & Reports) */}
-        <Col xs={24} lg={16}>
+        <Col xs={24} lg={18}>
           {/* Messages Panel */}
           <div style={{ marginBottom: 24 }}>
             <MessagePanel messages={messages} />
@@ -185,7 +185,7 @@ const TaskDetail = () => {
         </Col>
 
         {/* Right Column: Stats & Metadata Sidebar */}
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={6}>
           <StatsSidebar
             task={currentTask}
             stats={stats}
