@@ -24,7 +24,7 @@ services:
   #    timeout: 5s
   #    retries: 5
 
-  # Trading Agent Engine (Python FastAPI)
+  # Trading Agent Engine (Python FastAPI )
   engine:
     build:
       context: ./trading-agent-engine
