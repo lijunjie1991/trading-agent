@@ -6,6 +6,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
 import StatsPanel from '../components/Task/StatsPanel'
+import ProcessingIndicator from '../components/Task/ProcessingIndicator'
 import Loading from '../components/Common/Loading'
 import {
   updateStats,
@@ -27,6 +28,7 @@ const TaskDetail = () => {
   const store = useStore()
   const pollingIntervalRef = useRef(null)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [lastPollingTime, setLastPollingTime] = useState(null)
 
   const {
     currentTask,
@@ -37,6 +39,8 @@ const TaskDetail = () => {
     loading,
     lastTimestamp,
   } = useSelector((state) => state.task)
+
+  const isProcessing = currentTask?.status === 'RUNNING' || currentTask?.status === 'PENDING'
 
   useEffect(() => {
     dispatch(resetTaskState())
@@ -55,6 +59,7 @@ const TaskDetail = () => {
   const startPolling = () => {
     // Initial fetch
     dispatch(fetchTaskMessages({ taskId, lastTimestamp: null }))
+    setLastPollingTime(new Date())
 
     // Poll every 2 seconds
     pollingIntervalRef.current = setInterval(() => {
@@ -66,6 +71,8 @@ const TaskDetail = () => {
 
       // Always refresh task status to get latest updates
       dispatch(fetchTask(taskId))
+
+      setLastPollingTime(new Date())
     }, 2000)
   }
 
@@ -138,6 +145,9 @@ const TaskDetail = () => {
           Back to Tasks
         </Button>
       </Space>
+
+      {/* Processing Indicator - Shows when task is running or pending */}
+      <ProcessingIndicator status={currentTask?.status} lastUpdateTime={lastPollingTime} />
 
       {/* Hero Section - Key Information */}
       <Card style={{ marginBottom: 24, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
@@ -268,7 +278,7 @@ const TaskDetail = () => {
 
       {/* Stats Panel */}
       <div style={{ marginBottom: 24 }}>
-        <StatsPanel stats={stats} />
+        <StatsPanel stats={stats} isProcessing={isProcessing} />
       </div>
 
       {/* Messages Panel - Full width */}

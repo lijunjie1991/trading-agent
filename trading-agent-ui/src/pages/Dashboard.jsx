@@ -100,10 +100,10 @@ const Dashboard = () => {
             }}
           >
             <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: 500 }}>
                 Total Analyses
               </Text>
-              <Title level={1} style={{ color: '#fff', margin: '8px 0', fontSize: '48px', fontWeight: 700 }}>
+              <Title level={2} style={{ color: '#fff', margin: '8px 0', fontSize: '36px', fontWeight: 700 }}>
                 {taskStats.total || 0}
               </Title>
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>

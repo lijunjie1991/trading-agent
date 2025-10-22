@@ -1,17 +1,36 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Card, Typography, Empty, Space, Tag } from 'antd'
 import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
+import './ProcessingIndicator.css'
 
 const { Title, Text } = Typography
 
 const MessagePanel = ({ messages }) => {
   const containerRef = useRef(null)
+  const [newMessageIds, setNewMessageIds] = useState(new Set())
+  const prevMessageCountRef = useRef(0)
 
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = 0
     }
+
+    // Detect new messages and add animation
+    if (messages.length > prevMessageCountRef.current) {
+      const newIds = new Set()
+      messages.slice(0, messages.length - prevMessageCountRef.current).forEach((msg) => {
+        newIds.add(msg.id || `${msg.createdAt}-${msg.messageType}`)
+      })
+      setNewMessageIds(newIds)
+
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        setNewMessageIds(new Set())
+      }, 2000)
+    }
+
+    prevMessageCountRef.current = messages.length
   }, [messages])
 
   const renderMessageContent = (message) => {
@@ -165,18 +184,22 @@ const MessagePanel = ({ messages }) => {
           <Empty description="No messages yet" style={{ marginTop: 50 }} />
         ) : (
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {messages.map((message, index) => (
-              <div
-                key={message.id || index}
-                className="slide-in"
-                style={{
-                  padding: 15,
-                  borderLeft: `4px solid ${getMessageBorderColor(message.messageType)}`,
-                  background: getMessageBackground(message.messageType),
-                  borderRadius: 6,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                }}
-              >
+            {messages.map((message, index) => {
+              const messageId = message.id || `${message.createdAt}-${message.messageType}`
+              const isNewMessage = newMessageIds.has(messageId)
+
+              return (
+                <div
+                  key={messageId}
+                  className={`slide-in ${isNewMessage ? 'message-slide-in new-message-highlight' : ''}`}
+                  style={{
+                    padding: 15,
+                    borderLeft: `4px solid ${getMessageBorderColor(message.messageType)}`,
+                    background: getMessageBackground(message.messageType),
+                    borderRadius: 6,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  }}
+                >
                 <div
                   style={{
                     display: 'flex',
@@ -196,7 +219,8 @@ const MessagePanel = ({ messages }) => {
                   {renderMessageContent(message)}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </Space>
         )}
       </div>
