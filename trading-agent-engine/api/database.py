@@ -24,7 +24,7 @@ encoded_username = quote_plus(DB_USERNAME)
 encoded_password = quote_plus(DB_PASSWORD)
 
 # Create database URL
-DATABASE_URL = f"mysql+pymysql://{encoded_username}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+DATABASE_URL = f"mysql+pymysql://{encoded_username}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
 print(f"Connecting to: mysql+pymysql://{DB_USERNAME}:***@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
