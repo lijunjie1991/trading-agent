@@ -169,13 +169,13 @@ const MessagePanel = ({ messages }) => {
           )}
         </Space>
       }
-      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      style={{ display: 'flex', flexDirection: 'column' }}
       bodyStyle={{ flex: 1, overflow: 'hidden', padding: 0 }}
     >
       <div
         ref={containerRef}
         style={{
-          height: '100%',
+          maxHeight: '600px',
           overflowY: 'auto',
           padding: 16,
         }}

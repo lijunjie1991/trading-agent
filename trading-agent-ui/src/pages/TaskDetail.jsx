@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { Card, Row, Col, Button, Typography, Space, Tag, Descriptions } from 'antd'
+import { Card, Row, Col, Button, Typography, Space, Tag } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
-import StatsPanel from '../components/Task/StatsPanel'
-import ProcessingIndicator from '../components/Task/ProcessingIndicator'
+import CompactHeader from '../components/Task/CompactHeader'
+import StatsSidebar from '../components/Task/StatsSidebar'
 import Loading from '../components/Common/Loading'
 import {
   updateStats,
@@ -146,165 +146,54 @@ const TaskDetail = () => {
         </Button>
       </Space>
 
-      {/* Processing Indicator - Shows when task is running or pending */}
-      <ProcessingIndicator status={currentTask?.status} lastUpdateTime={lastPollingTime} />
+      {/* Compact Header with embedded processing indicator */}
+      <CompactHeader
+        task={currentTask}
+        finalDecision={finalDecision}
+        isProcessing={isProcessing}
+        lastUpdateTime={lastPollingTime}
+      />
 
-      {/* Hero Section - Key Information */}
-      <Card style={{ marginBottom: 24, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-        <Row align="middle" gutter={24}>
-          <Col flex="auto">
-            <Space direction="vertical" size={8}>
-              <Space align="center" size={16}>
-                <Title level={1} style={{ margin: 0, color: '#fff', fontSize: '48px', fontWeight: 700 }}>
-                  {currentTask?.ticker || 'N/A'}
-                </Title>
-                <Tag
-                  color={getStatusColor(currentTask?.status)}
-                  style={{
-                    fontSize: 16,
-                    padding: '8px 20px',
-                    fontWeight: 600,
-                    borderRadius: 6,
-                    border: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                  }}
-                >
-                  {currentTask?.status?.toUpperCase() || 'UNKNOWN'}
-                </Tag>
-              </Space>
-              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 16 }}>
-                Analysis Date: {currentTask?.analysisDate || currentTask?.analysis_date || 'N/A'}
-              </Text>
-            </Space>
-          </Col>
-          <Col>
-            {finalDecision && (currentTask?.status === 'COMPLETED' || currentTask?.status === 'FAILED') ? (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 8 }}>
-                  Final Decision
-                </div>
-                <Tag
-                  color={
-                    finalDecision.toLowerCase().includes('buy')
-                      ? 'success'
-                      : finalDecision.toLowerCase().includes('sell')
-                      ? 'error'
-                      : 'warning'
-                  }
-                  style={{
-                    fontSize: 32,
-                    padding: '12px 32px',
-                    fontWeight: 700,
-                    borderRadius: 8,
-                    border: 'none',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  {finalDecision}
-                </Tag>
-              </div>
-            ) : null}
-          </Col>
-        </Row>
-      </Card>
+      {/* Two-Column Layout */}
+      <Row gutter={24}>
+        {/* Left Column: Main Content (Messages & Reports) */}
+        <Col xs={24} lg={16}>
+          {/* Messages Panel */}
+          <div style={{ marginBottom: 24 }}>
+            <MessagePanel messages={messages} />
+          </div>
 
-      {/* Task Metadata - Clean Layout */}
-      <Card style={{ marginBottom: 24 }} bodyStyle={{ padding: 24 }}>
-        <Row gutter={[24, 16]}>
-          <Col xs={24} sm={12} md={6}>
-            <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Task ID
-              </Text>
-            </div>
-            <Text strong style={{ fontSize: 14 }}>
-              {currentTask?.taskId || taskId}
-            </Text>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Research Depth
-              </Text>
-            </div>
-            <Text strong style={{ fontSize: 14 }}>
-              Level {currentTask?.researchDepth || currentTask?.research_depth || 'N/A'}
-            </Text>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Created
-              </Text>
-            </div>
-            <Text strong style={{ fontSize: 14 }}>
-              {currentTask?.createdAt
-                ? formatDateTime(currentTask.createdAt)
-                : currentTask?.created_at
-                ? formatDateTime(currentTask.created_at)
-                : 'N/A'}
-            </Text>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Completed
-              </Text>
-            </div>
-            <Text strong style={{ fontSize: 14 }}>
-              {currentTask?.completedAt
-                ? formatDateTime(currentTask.completedAt)
-                : currentTask?.completed_at
-                ? formatDateTime(currentTask.completed_at)
-                : 'In Progress...'}
-            </Text>
-          </Col>
-          <Col span={24}>
-            <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Selected Analysts
-              </Text>
-            </div>
-            <Space wrap>
-              {(currentTask?.selectedAnalysts || currentTask?.selected_analysts || []).map((analyst, idx) => (
-                <Tag key={idx} color="blue" style={{ margin: 0, fontSize: 13, padding: '4px 12px' }}>
-                  {analyst}
-                </Tag>
-              ))}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+          {/* Current Report */}
+          {currentReport && (
+            <Card
+              title={
+                <Space>
+                  <Title level={5} style={{ margin: 0 }}>
+                    Current Report
+                  </Title>
+                  <Tag color="purple">{currentReport.report_type}</Tag>
+                </Space>
+              }
+              style={{ marginBottom: 24 }}
+            >
+              <div
+                className="markdown-content"
+                dangerouslySetInnerHTML={{ __html: marked.parse(currentReport.content || '') }}
+              />
+            </Card>
+          )}
+        </Col>
 
-      {/* Stats Panel */}
-      <div style={{ marginBottom: 24 }}>
-        <StatsPanel stats={stats} isProcessing={isProcessing} />
-      </div>
-
-      {/* Messages Panel - Full width */}
-      <div style={{ marginBottom: 24 }}>
-        <MessagePanel messages={messages} />
-      </div>
-
-      {/* Current Report */}
-      {currentReport && (
-        <Card
-          title={
-            <Space>
-              <Title level={5} style={{ margin: 0 }}>
-                Current Report
-              </Title>
-              <Tag color="purple">{currentReport.report_type}</Tag>
-            </Space>
-          }
-          style={{ marginTop: 24 }}
-        >
-          <div
-            className="markdown-content"
-            dangerouslySetInnerHTML={{ __html: marked.parse(currentReport.content || '') }}
+        {/* Right Column: Stats & Metadata Sidebar */}
+        <Col xs={24} lg={8}>
+          <StatsSidebar
+            task={currentTask}
+            stats={stats}
+            isProcessing={isProcessing}
+            taskId={taskId}
           />
-        </Card>
-      )}
+        </Col>
+      </Row>
     </div>
   )
 }
