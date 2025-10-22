@@ -38,7 +38,7 @@ services:
       DB_HOST: ${MYSQL_HOST:-mysql}
       DB_PORT: ${MYSQL_PORT:-3306}
       DB_NAME: ${MYSQL_DATABASE:-tradingagent}
-      DB_USER: ${MYSQL_USER:-hamsa}
+      DB_USERNAME: ${MYSQL_USER:-hamsa}
       DB_PASSWORD: ${MYSQL_PASSWORD:-dev@2023}
 
       # LLM API Keys
