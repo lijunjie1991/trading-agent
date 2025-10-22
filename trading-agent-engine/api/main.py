@@ -52,7 +52,7 @@ MIN_CONTENT_LENGTH = 10
 MAX_CONTENT_HASH_LENGTH = 1000  # Use first N chars for hash to avoid memory issues
 
 # System message filters
-SYSTEM_MESSAGE_FILTERS = ['system:', 'function:', 'tool response:']
+SYSTEM_MESSAGE_FILTERS = []
 
 # Report types
 REPORT_TYPES = [
@@ -305,6 +305,9 @@ def process_messages(
         chunk: Current chunk from graph stream
         processed_message_ids: Set of already processed message IDs
     """
+    print(f"---------------------------------------")
+    print(f"Processing chunk: {chunk}")
+    print(f"---------------------------------------")
     messages = chunk.get("messages", [])
     if not messages:
         return
@@ -480,7 +483,7 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
         # Initialize TradingAgents
         ta = TradingAgentsGraph(
             selected_analysts=[analyst.value for analyst in request.selected_analysts],
-            debug=True,
+            debug=False,
             config=config
         )
 
