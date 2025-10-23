@@ -343,9 +343,14 @@ def process_messages(
     # Process message content
     content = extract_message_content(last_message)
     if content and not should_filter_content(content):
-        send_progress_sync(task_id, "message", {
-            "content": content
-        })
+        # Check if chunk contains any report - if so, skip saving message
+        # because the report already contains the complete structured content
+        has_report = any(report_type in chunk and chunk[report_type] for report_type in REPORT_TYPES)
+
+        if not has_report:
+            send_progress_sync(task_id, "message", {
+                "content": content
+            })
 
 
 def process_reports(
