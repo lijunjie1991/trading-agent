@@ -262,6 +262,28 @@ def should_filter_content(content: str) -> bool:
     return any(skip in content_lower for skip in SYSTEM_MESSAGE_FILTERS)
 
 
+def get_message_type(message) -> str:
+    """
+    Get message type from LangGraph message object.
+
+    Args:
+        message: Message object from LangGraph
+
+    Returns:
+        Message type: "human", "ai", "tool", "system", or "unknown"
+    """
+    message_class = message.__class__.__name__
+    if "Human" in message_class:
+        return "human"
+    elif "AI" in message_class:
+        return "ai"
+    elif "Tool" in message_class:
+        return "tool"
+    elif "System" in message_class:
+        return "system"
+    return "unknown"
+
+
 def update_agent_status(task_id: str, chunk: Dict[str, Any], processed_agents: Set[str]) -> None:
     """
     Update agent status based on chunk keys.
@@ -300,6 +322,11 @@ def process_messages(
     """
     Process and save messages from chunk with deduplication.
 
+    Enhanced to handle all message types:
+    - HumanMessage: User inputs and system instructions
+    - AIMessage: LLM responses and tool calls
+    - ToolMessage: Tool execution results
+
     Args:
         task_id: Unique task identifier
         chunk: Current chunk from graph stream
@@ -308,10 +335,15 @@ def process_messages(
     print(f"---------------------------------------")
     print(f"Processing chunk: {chunk}")
     print(f"---------------------------------------")
+
     messages = chunk.get("messages", [])
     if not messages:
         return
 
+    # Check if chunk contains any report
+    has_report = any(report_type in chunk and chunk[report_type] for report_type in REPORT_TYPES)
+
+    # Process the last message (most recent addition)
     last_message = messages[-1]
 
     # Get unique message ID
@@ -323,33 +355,66 @@ def process_messages(
 
     processed_message_ids.add(message_id)
 
-    # Increment LLM call counter
-    increment_task_stats(task_id, llm_calls=1)
+    # Get message type
+    msg_type = get_message_type(last_message)
 
-    # Process tool calls
-    if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        for tool_call in last_message.tool_calls:
-            tool_name = tool_call.get("name") if isinstance(tool_call, dict) else getattr(tool_call, "name", "unknown")
-            tool_args = tool_call.get("args") if isinstance(tool_call, dict) else getattr(tool_call, "args", {})
+    # === Process AIMessage ===
+    if msg_type == "ai":
+        # Increment LLM call counter (only for AI messages)
+        increment_task_stats(task_id, llm_calls=1)
 
-            # Increment tool call counter
-            increment_task_stats(task_id, tool_calls=1)
+        # Process tool calls
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            for tool_call in last_message.tool_calls:
+                tool_name = tool_call.get("name") if isinstance(tool_call, dict) else getattr(tool_call, "name", "unknown")
+                tool_args = tool_call.get("args") if isinstance(tool_call, dict) else getattr(tool_call, "args", {})
 
-            send_progress_sync(task_id, "tool_call", {
+                # Increment tool call counter
+                increment_task_stats(task_id, tool_calls=1)
+
+                send_progress_sync(task_id, "tool_call", {
+                    "tool_name": tool_name,
+                    "args": tool_args
+                })
+
+        # Process AI message content
+        content = extract_message_content(last_message)
+        if content and not should_filter_content(content):
+            # Skip saving message if chunk contains report
+            # because the report already contains the complete structured content
+            if not has_report:
+                send_progress_sync(task_id, "message", {
+                    "role": "assistant",
+                    "content": content
+                })
+
+    # === Process ToolMessage ===
+    elif msg_type == "tool":
+        content = extract_message_content(last_message)
+        if content:
+            # Get tool name from message
+            tool_name = getattr(last_message, "name", "unknown")
+
+            # Truncate content if too long (tool results can be very large)
+            max_preview_length = 2000
+            content_preview = content[:max_preview_length] if len(content) > max_preview_length else content
+
+            # Save tool result
+            send_progress_sync(task_id, "tool_result", {
                 "tool_name": tool_name,
-                "args": tool_args
+                "result_preview": content_preview,
+                "result_length": len(content),
+                "truncated": len(content) > max_preview_length
             })
 
-    # Process message content
-    content = extract_message_content(last_message)
-    if content and not should_filter_content(content):
-        # Check if chunk contains any report - if so, skip saving message
-        # because the report already contains the complete structured content
-        has_report = any(report_type in chunk and chunk[report_type] for report_type in REPORT_TYPES)
-
-        if not has_report:
+    # === Process HumanMessage ===
+    elif msg_type == "human":
+        content = extract_message_content(last_message)
+        # Only save meaningful human messages (not too short, not empty)
+        if content and len(content.strip()) > 2:
             send_progress_sync(task_id, "message", {
-                "content": content
+                "role": "user",
+                "content": content.strip()
             })
 
 
