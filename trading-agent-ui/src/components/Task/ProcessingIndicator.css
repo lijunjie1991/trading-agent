@@ -34,7 +34,8 @@
 
 /* Spinning Animation for Running Status */
 .spinning {
-  animation: spin 2s linear infinite, glow 2s ease-in-out infinite;
+  animation: spin 2s linear infinite;
+  display: inline-block;
 }
 
 @keyframes spin {
@@ -46,13 +47,18 @@
   }
 }
 
-/* Glowing effect for active AI processing */
+/* Glowing effect for active AI processing - applied to container */
+.icon-glow {
+  filter: drop-shadow(0 0 4px currentColor);
+  animation: glow 2s ease-in-out infinite;
+}
+
 @keyframes glow {
   0%, 100% {
     filter: drop-shadow(0 0 2px currentColor);
   }
   50% {
-    filter: drop-shadow(0 0 8px currentColor);
+    filter: drop-shadow(0 0 6px currentColor);
   }
 }
 

@@ -138,7 +138,18 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
           }}
         >
           <Space size={8} align="center">
-            <div style={{ color: '#fff', fontSize: 16 }}>
+            <div
+              className="icon-glow"
+              style={{
+                color: '#fff',
+                fontSize: 16,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 20,
+                padding: '2px'
+              }}
+            >
               {processingInfo.icon}
             </div>
             <Text strong style={{ color: '#fff', fontSize: 14 }}>
