@@ -26,6 +26,21 @@
   border-color: #667eea !important;
 }
 
+/* View Reports Card */
+.view-reports-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+  transition: all 0.3s ease;
+}
+
+.view-reports-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .task-detail-page {
