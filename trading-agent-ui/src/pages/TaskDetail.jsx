@@ -139,12 +139,15 @@ const TaskDetail = () => {
 
   return (
     <div className="task-detail-page">
-      {/* Header with Back button */}
-      <Space style={{ marginBottom: 24 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/tasks')}>
-          Back to Tasks
-        </Button>
-      </Space>
+      {/* Floating Back Button */}
+      <Button
+        className="floating-back-button"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/tasks')}
+        shape="circle"
+        size="large"
+        title="Back to Tasks"
+      />
 
       {/* Compact Header with embedded processing indicator */}
       <CompactHeader

@@ -175,7 +175,7 @@ const MessagePanel = ({ messages }) => {
       <div
         ref={containerRef}
         style={{
-          maxHeight: '600px',
+          maxHeight: '1000px',
           overflowY: 'auto',
           padding: 16,
         }}
