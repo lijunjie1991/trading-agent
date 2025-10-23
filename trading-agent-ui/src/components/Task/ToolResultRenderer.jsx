@@ -18,17 +18,22 @@ const ToolResultRenderer = ({ data }) => {
     result_preview = '',
   } = data
 
+  // Normalize line breaks - convert \n to actual newlines if needed
+  const normalizedContent = typeof result_preview === 'string'
+    ? result_preview.replace(/\\n/g, '\n')
+    : result_preview
+
   // Detect if the content is markdown-like (contains ## or * or numbered lists)
-  const isMarkdownContent = result_preview.includes('##') ||
-                           result_preview.includes('\n- ') ||
-                           /^\d+\.\s/.test(result_preview)
+  const isMarkdownContent = normalizedContent.includes('##') ||
+                           normalizedContent.includes('\n- ') ||
+                           /^\d+\.\s/.test(normalizedContent)
 
   // Try to parse the preview as JSON if it doesn't look like markdown
   let parsedContent = null
   let isJsonContent = false
   if (!isMarkdownContent) {
     try {
-      parsedContent = JSON.parse(result_preview)
+      parsedContent = JSON.parse(normalizedContent)
       isJsonContent = true
     } catch (e) {
       // Not JSON, will render as text or markdown
@@ -107,7 +112,7 @@ const ToolResultRenderer = ({ data }) => {
                   color: '#2d3748',
                   lineHeight: 1.8,
                 }}
-                dangerouslySetInnerHTML={{ __html: marked.parse(result_preview || '') }}
+                dangerouslySetInnerHTML={{ __html: marked.parse(normalizedContent || '') }}
               />
             ) : (
               // Render as plain text with formatting
@@ -125,12 +130,12 @@ const ToolResultRenderer = ({ data }) => {
                   lineHeight: 1.6,
                 }}
               >
-                {result_preview}
+                {normalizedContent}
               </pre>
             )}
 
             {/* Fade overlay when collapsed */}
-            {!isExpanded && result_preview.length > 500 && (
+            {!isExpanded && normalizedContent.length > 500 && (
               <div
                 style={{
                   position: 'absolute',
@@ -147,7 +152,7 @@ const ToolResultRenderer = ({ data }) => {
         </div>
 
         {/* Expand/Collapse Button */}
-        {result_preview.length > 500 && (
+        {normalizedContent.length > 500 && (
           <div
             style={{
               borderTop: '1px solid #e2e8f0',
