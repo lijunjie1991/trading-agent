@@ -1,15 +1,16 @@
-import { Card, Typography, Space, Tag } from 'antd'
+import { Card, Typography, Space, Tag, Button } from 'antd'
 import {
   RobotOutlined,
   ClockCircleOutlined,
   SyncOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { getStatusColor } from '../../utils/helpers'
 import './ProcessingIndicator.css'
 
 const { Title, Text } = Typography
 
-const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime }) => {
+const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onViewReports }) => {
   const getProcessingInfo = () => {
     if (task?.status === 'RUNNING') {
       return {
@@ -33,6 +34,8 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime }) =>
     ? Math.floor((Date.now() - new Date(lastUpdateTime).getTime()) / 1000)
     : 0
 
+  const isCompleted = task?.status === 'COMPLETED'
+
   return (
     <Card
       style={{
@@ -47,8 +50,8 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime }) =>
       <div style={{ position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
           {/* Left: Ticker and Status */}
-          <div>
-            <Space align="center" size={12}>
+          <div style={{ flex: '1 1 auto' }}>
+            <Space align="center" size={12} wrap>
               <Title level={2} style={{ margin: 0, color: '#fff', fontSize: '36px', fontWeight: 700 }}>
                 {task?.ticker || 'N/A'}
               </Title>
@@ -65,6 +68,22 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime }) =>
               >
                 {task?.status?.toUpperCase() || 'UNKNOWN'}
               </Tag>
+              {/* View Reports Button - Integrated */}
+              {isCompleted && onViewReports && (
+                <Button
+                  icon={<FileTextOutlined />}
+                  onClick={onViewReports}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    border: 'none',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  }}
+                  size="middle"
+                >
+                  View Reports
+                </Button>
+              )}
             </Space>
             <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, display: 'block', marginTop: 8 }}>
               {task?.analysisDate || task?.analysis_date || 'N/A'}

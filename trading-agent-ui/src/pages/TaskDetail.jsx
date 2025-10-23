@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { Card, Row, Col, Button, Typography, Space, Tag, Modal, Tabs, Empty, Spin } from 'antd'
+import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider } from 'antd'
 import { ArrowLeftOutlined, FileTextOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
@@ -32,7 +32,7 @@ const TaskDetail = () => {
   const [initialLoading, setInitialLoading] = useState(true)
   const [lastPollingTime, setLastPollingTime] = useState(null)
   const [showReportsModal, setShowReportsModal] = useState(false)
-  const [reports, setReports] = useState(null)
+  const [reports, setReports] = useState([])
   const [loadingReports, setLoadingReports] = useState(false)
 
   const {
@@ -46,7 +46,6 @@ const TaskDetail = () => {
   } = useSelector((state) => state.task)
 
   const isProcessing = currentTask?.status === 'RUNNING' || currentTask?.status === 'PENDING'
-  const isCompleted = currentTask?.status === 'COMPLETED'
 
   useEffect(() => {
     dispatch(resetTaskState())
@@ -131,16 +130,23 @@ const TaskDetail = () => {
     setLoadingReports(true)
 
     try {
-      const response = await api.get(`/api/v1/analysis/${taskId}/reports`)
-      setReports(response.data.reports || {})
+      // Call Java backend API: /api/v1/tasks/{taskId}/reports
+      // Returns: Result<List<Map<String, Object>>>
+      const response = await api.get(`/api/v1/tasks/${taskId}/reports`)
+
+      // response.data is the data field from Result.success(reports)
+      // It's a List of Maps, each containing report_type and content
+      const reportsList = response.data || []
+      setReports(reportsList)
     } catch (error) {
       console.error('Failed to fetch reports:', error)
+      setReports([])
     } finally {
       setLoadingReports(false)
     }
   }
 
-  const renderReport = (reportType, content) => {
+  const renderReport = (report) => {
     const reportTitles = {
       market_report: 'Market Analysis',
       sentiment_report: 'Social Sentiment Analysis',
@@ -151,11 +157,15 @@ const TaskDetail = () => {
       final_trade_decision: 'Final Trade Decision',
     }
 
+    const reportType = report.report_type || report.reportType
+    const content = report.content
+
     return (
-      <div key={reportType} style={{ marginBottom: 24 }}>
+      <div key={reportType} style={{ marginBottom: 32 }}>
         <Title level={4} style={{ color: '#667eea', marginBottom: 16 }}>
-          {reportTitles[reportType] || reportType}
+          📊 {reportTitles[reportType] || reportType}
         </Title>
+        <Divider style={{ marginTop: 8, marginBottom: 16 }} />
         <div
           className="markdown-content"
           dangerouslySetInnerHTML={{ __html: marked.parse(content || '') }}
@@ -180,42 +190,14 @@ const TaskDetail = () => {
         title="Back to Tasks"
       />
 
-      {/* Compact Header */}
+      {/* Compact Header with integrated View Reports button */}
       <CompactHeader
         task={currentTask}
         finalDecision={finalDecision}
         isProcessing={isProcessing}
         lastUpdateTime={lastPollingTime}
+        onViewReports={currentTask?.status === 'COMPLETED' ? handleViewReports : null}
       />
-
-      {/* View Full Reports Button (Only for completed tasks) */}
-      {isCompleted && (
-        <Card
-          className="view-reports-card"
-          style={{ marginBottom: 24, textAlign: 'center' }}
-        >
-          <Space direction="vertical" size={12}>
-            <FileTextOutlined style={{ fontSize: 48, color: '#667eea' }} />
-            <Title level={4} style={{ margin: 0 }}>Analysis Complete!</Title>
-            <Text type="secondary">
-              All reports have been generated. Click below to view the complete analysis.
-            </Text>
-            <Button
-              type="primary"
-              size="large"
-              icon={<FileTextOutlined />}
-              onClick={handleViewReports}
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none',
-                marginTop: 8,
-              }}
-            >
-              View Full Reports
-            </Button>
-          </Space>
-        </Card>
-      )}
 
       {/* Two-Column Layout */}
       <Row gutter={24}>
@@ -239,8 +221,8 @@ const TaskDetail = () => {
       <Modal
         title={
           <Space>
-            <FileTextOutlined style={{ color: '#667eea' }} />
-            <span>Complete Analysis Reports</span>
+            <FileTextOutlined style={{ color: '#667eea', fontSize: 20 }} />
+            <span style={{ fontSize: 18, fontWeight: 600 }}>Complete Analysis Reports</span>
           </Space>
         }
         open={showReportsModal}
@@ -248,7 +230,7 @@ const TaskDetail = () => {
         footer={null}
         width={1200}
         style={{ top: 20 }}
-        bodyStyle={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}
+        bodyStyle={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', padding: 24 }}
       >
         {loadingReports ? (
           <div style={{ textAlign: 'center', padding: 60 }}>
@@ -257,36 +239,39 @@ const TaskDetail = () => {
               <Text type="secondary">Loading reports...</Text>
             </div>
           </div>
-        ) : reports && Object.keys(reports).length > 0 ? (
-          <Tabs defaultActiveKey="all">
-            <TabPane tab="All Reports" key="all">
-              <div style={{ padding: '0 16px' }}>
-                {Object.entries(reports).map(([reportType, content]) =>
-                  renderReport(reportType, content)
-                )}
+        ) : reports && reports.length > 0 ? (
+          <Tabs defaultActiveKey="all" type="card">
+            <TabPane tab="📑 All Reports" key="all">
+              <div style={{ padding: '16px 0' }}>
+                {reports.map((report) => renderReport(report))}
               </div>
             </TabPane>
-            {Object.entries(reports).map(([reportType, content]) => {
+            {reports.map((report) => {
+              const reportType = report.report_type || report.reportType
               const reportTitles = {
-                market_report: 'Market',
-                sentiment_report: 'Sentiment',
-                news_report: 'News',
-                fundamentals_report: 'Fundamentals',
-                investment_plan: 'Research',
-                trader_investment_plan: 'Trading',
-                final_trade_decision: 'Decision',
+                market_report: '📈 Market',
+                sentiment_report: '💬 Sentiment',
+                news_report: '📰 News',
+                fundamentals_report: '📊 Fundamentals',
+                investment_plan: '🔬 Research',
+                trader_investment_plan: '💼 Trading',
+                final_trade_decision: '✅ Decision',
               }
               return (
                 <TabPane tab={reportTitles[reportType] || reportType} key={reportType}>
-                  <div style={{ padding: '0 16px' }}>
-                    {renderReport(reportType, content)}
+                  <div style={{ padding: '16px 0' }}>
+                    {renderReport(report)}
                   </div>
                 </TabPane>
               )
             })}
           </Tabs>
         ) : (
-          <Empty description="No reports available" />
+          <Empty
+            description="No reports available"
+            style={{ padding: 60 }}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
         )}
       </Modal>
     </div>
