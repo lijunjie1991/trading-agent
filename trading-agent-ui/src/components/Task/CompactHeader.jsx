@@ -15,14 +15,16 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
     if (task?.status === 'RUNNING') {
       return {
         icon: <RobotOutlined className="spinning" style={{ fontSize: 16 }} />,
-        text: 'AI analyzing',
+        text: 'AI is analyzing',
+        showTypingDots: true,
         color: '#667eea',
       }
     }
     if (task?.status === 'PENDING') {
       return {
         icon: <ClockCircleOutlined className="pulse" style={{ fontSize: 16 }} />,
-        text: 'Pending',
+        text: 'Waiting to start',
+        showTypingDots: false,
         color: '#f59e0b',
       }
     }
@@ -123,6 +125,7 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
       {/* Processing Indicator Bar (embedded at bottom) */}
       {isProcessing && processingInfo && (
         <div
+          className="breathing"
           style={{
             marginTop: 16,
             paddingTop: 12,
@@ -134,13 +137,20 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
             gap: 8,
           }}
         >
-          <Space size={8}>
+          <Space size={8} align="center">
             <div style={{ color: '#fff', fontSize: 16 }}>
               {processingInfo.icon}
             </div>
             <Text strong style={{ color: '#fff', fontSize: 14 }}>
               {processingInfo.text}
             </Text>
+            {processingInfo.showTypingDots && (
+              <div className="typing-dots" style={{ color: '#fff', marginLeft: 4 }}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            )}
           </Space>
 
           {timeSinceUpdate > 0 && (
@@ -154,8 +164,8 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
 
       {/* Progress Bar */}
       {isProcessing && (
-        <div className="progress-bar" style={{ bottom: 0, left: 0, right: 0 }}>
-          <div className="progress-bar-fill" style={{ background: 'rgba(255,255,255,0.3)' }} />
+        <div className="progress-bar shimmer" style={{ bottom: 0, left: 0, right: 0 }}>
+          <div className="progress-bar-fill" style={{ background: 'rgba(255,255,255,0.4)' }} />
         </div>
       )}
     </Card>

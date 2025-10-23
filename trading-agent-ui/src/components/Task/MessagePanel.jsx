@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card, Typography, Empty, Space, Tag } from 'antd'
 import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
+import ToolResultRenderer from './ToolResultRenderer'
 import './ProcessingIndicator.css'
 
 const { Title, Text } = Typography
@@ -132,6 +133,10 @@ const MessagePanel = ({ messages }) => {
       )
     }
 
+    if (type === 'tool_result') {
+      return <ToolResultRenderer data={data} />
+    }
+
     return <Text>{JSON.stringify(data)}</Text>
   }
 
@@ -140,6 +145,7 @@ const MessagePanel = ({ messages }) => {
       status: '#4299e1',
       message: '#48bb78',
       tool_call: '#ed8936',
+      tool_result: '#38b2ac',
       report: '#9f7aea',
       agent_status: '#a0aec0',
     }
@@ -151,6 +157,7 @@ const MessagePanel = ({ messages }) => {
       status: '#ebf8ff',
       message: '#f0fff4',
       tool_call: '#fffaf0',
+      tool_result: '#e6fffa',
       report: '#faf5ff',
       agent_status: '#f7fafc',
     }

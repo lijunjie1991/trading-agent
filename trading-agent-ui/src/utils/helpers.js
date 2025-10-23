@@ -222,6 +222,7 @@ export const getMessageTypeIcon = (type) => {
     status: '📊',
     message: '💬',
     tool_call: '🔧',
+    tool_result: '✅',
     report: '📄',
     agent_status: '👤',
   }
@@ -237,6 +238,7 @@ export const getMessageTypeLabel = (type) => {
     status: 'STATUS',
     message: 'REASONING',
     tool_call: 'TOOL CALL',
+    tool_result: 'TOOL RESULT',
     report: 'REPORT',
     agent_status: 'AGENT STATUS',
   }
