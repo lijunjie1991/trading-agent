@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { Card, Typography, Space, Tag, Button } from 'antd'
 import {
   RobotOutlined,
@@ -11,6 +12,20 @@ import './ProcessingIndicator.css'
 const { Title, Text } = Typography
 
 const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onViewReports }) => {
+  const [showCelebration, setShowCelebration] = useState(false)
+  const prevStatusRef = useRef(task?.status)
+
+  // Detect when task transitions to COMPLETED
+  useEffect(() => {
+    if (prevStatusRef.current === 'RUNNING' && task?.status === 'COMPLETED') {
+      setShowCelebration(true)
+      // Remove celebration animation after it completes
+      setTimeout(() => {
+        setShowCelebration(false)
+      }, 1500)
+    }
+    prevStatusRef.current = task?.status
+  }, [task?.status])
   const getProcessingInfo = () => {
     if (task?.status === 'RUNNING') {
       return {
@@ -40,6 +55,7 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
 
   return (
     <Card
+      className={showCelebration ? 'celebration-animation' : ''}
       style={{
         marginBottom: 24,
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -73,17 +89,32 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
               {/* View Reports Button - Integrated */}
               {isCompleted && onViewReports && (
                 <Button
+                  type="primary"
                   icon={<FileTextOutlined />}
                   onClick={onViewReports}
+                  className={showCelebration ? 'success-pulse' : ''}
                   style={{
-                    background: 'rgba(255, 255, 255, 0.95)',
+                    background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
                     border: 'none',
-                    fontWeight: 600,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    fontWeight: 700,
+                    fontSize: 15,
+                    height: 40,
+                    paddingLeft: 20,
+                    paddingRight: 20,
+                    boxShadow: '0 4px 12px rgba(72, 187, 120, 0.4)',
+                    transition: 'all 0.3s ease',
                   }}
-                  size="middle"
+                  size="large"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(72, 187, 120, 0.5)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(72, 187, 120, 0.4)'
+                  }}
                 >
-                  View Reports
+                  📊 View Reports
                 </Button>
               )}
             </Space>
@@ -146,8 +177,9 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: 20,
-                padding: '2px'
+                minWidth: 24,
+                padding: '2px 4px 2px 6px',
+                marginLeft: '4px'
               }}
             >
               {processingInfo.icon}
