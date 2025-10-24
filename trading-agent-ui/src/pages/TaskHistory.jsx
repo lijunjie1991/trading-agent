@@ -138,7 +138,7 @@ const TaskHistory = () => {
         >
           <Row gutter={[12, 16]} align="middle">
             {/* Search Keyword */}
-            <Col xs={24} sm={24} md={10} lg={9}>
+            <Col xs={24} sm={12} md={8} lg={8}>
               <Form.Item name="searchKeyword" style={{ marginBottom: 0 }}>
                 <Input
                   placeholder="Search by Ticker, Task ID, or Decision..."
@@ -153,7 +153,7 @@ const TaskHistory = () => {
             </Col>
 
             {/* Status Filter */}
-            <Col xs={8} sm={6} md={4} lg={3}>
+            <Col xs={12} sm={6} md={4} lg={3}>
               <Form.Item name="status" style={{ marginBottom: 0 }}>
                 <Select
                   placeholder="Status"
@@ -172,7 +172,7 @@ const TaskHistory = () => {
             </Col>
 
             {/* Date Range */}
-            <Col xs={16} sm={10} md={6} lg={6}>
+            <Col xs={12} sm={6} md={5} lg={5}>
               <Form.Item name="dateRange" style={{ marginBottom: 0 }}>
                 <RangePicker
                   size="large"
@@ -186,9 +186,9 @@ const TaskHistory = () => {
               </Form.Item>
             </Col>
 
-            {/* Action Buttons - Compressed */}
-            <Col xs={24} sm={8} md={4} lg={6}>
-              <Space size={8} wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
+            {/* Action Buttons */}
+            <Col xs={24} sm={24} md={7} lg={8}>
+              <Space size={8} style={{ width: '100%', justifyContent: 'flex-end', display: 'flex' }}>
                 <Button
                   type="primary"
                   icon={<SearchOutlined />}
@@ -201,7 +201,7 @@ const TaskHistory = () => {
                     border: 'none',
                     fontWeight: 600,
                     boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                    minWidth: 100,
+                    flex: '0 0 auto',
                   }}
                 >
                   Search
@@ -213,7 +213,7 @@ const TaskHistory = () => {
                   style={{
                     borderRadius: 10,
                     fontWeight: 600,
-                    minWidth: 90,
+                    flex: '0 0 auto',
                   }}
                 >
                   Reset
@@ -229,7 +229,7 @@ const TaskHistory = () => {
                     border: 'none',
                     fontWeight: 600,
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                    minWidth: 140,
+                    flex: '0 0 auto',
                   }}
                 >
                   New Analysis
