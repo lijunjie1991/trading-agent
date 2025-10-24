@@ -332,9 +332,8 @@ def process_messages(
         chunk: Current chunk from graph stream
         processed_message_ids: Set of already processed message IDs
     """
-    print(f"---------------------------------------")
-    print(json.dumps(chunk, ensure_ascii=False, indent=2, default=str))
-    print(f"---------------------------------------")
+
+    print(f"---------------------------------------------------------------------------------------------------------------------")
 
     messages = chunk.get("messages", [])
     if not messages:
@@ -358,6 +357,11 @@ def process_messages(
 
         # Get message type
         msg_type = get_message_type(message)
+
+
+        print(f"{message}")
+        print(f"---------------------------------------------------------------------------------------------------------------------")
+        print(f"---------------------------------------------------------------------------------------------------------------------")
 
         # === Process AIMessage ===
         if msg_type == "ai":
@@ -581,7 +585,7 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
             final_chunk = chunk
 
             # Update agent status
-            update_agent_status(task_id, chunk, processed_agents)
+            # update_agent_status(task_id, chunk, processed_agents)
 
             # Process messages with deduplication
             process_messages(task_id, chunk, processed_message_ids)
