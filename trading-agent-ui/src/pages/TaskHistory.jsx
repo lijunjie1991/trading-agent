@@ -64,7 +64,6 @@ const TaskHistory = () => {
       ...queryParams,
       page: 0, // Reset to first page on new search
       status: values.status === 'all' ? undefined : values.status?.toUpperCase(),
-      ticker: values.ticker || undefined,
       startDate: startDate,
       endDate: endDate,
       searchKeyword: values.searchKeyword || undefined,
@@ -76,9 +75,22 @@ const TaskHistory = () => {
     dispatch(queryTasks(newQueryParams))
   }
 
-  // Handle refresh
-  const handleRefresh = () => {
-    dispatch(queryTasks(queryParams))
+  // Handle reset filters
+  const handleReset = () => {
+    form.resetFields()
+    const defaultParams = {
+      page: 0,
+      pageSize: 12,
+      status: undefined,
+      ticker: undefined,
+      startDate: undefined,
+      endDate: undefined,
+      searchKeyword: undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
+    }
+    setQueryParams(defaultParams)
+    dispatch(queryTasks(defaultParams))
   }
 
   // Handle pagination change
@@ -124,10 +136,10 @@ const TaskHistory = () => {
         >
           <Row gutter={[16, 16]} align="middle">
             {/* Search Keyword */}
-            <Col xs={24} sm={12} md={6} lg={5}>
+            <Col xs={24} sm={12} md={8} lg={7}>
               <Form.Item name="searchKeyword" style={{ marginBottom: 0 }}>
                 <Input
-                  placeholder="🔍 Search..."
+                  placeholder="Search by Ticker, Task ID, or Decision..."
                   allowClear
                   size="large"
                   style={{
@@ -139,15 +151,16 @@ const TaskHistory = () => {
             </Col>
 
             {/* Status Filter */}
-            <Col xs={12} sm={6} md={4} lg={3}>
+            <Col xs={12} sm={6} md={4} lg={4}>
               <Form.Item name="status" style={{ marginBottom: 0 }}>
                 <Select
+                  placeholder="Status"
                   size="large"
                   style={{
                     borderRadius: 10,
                   }}
                 >
-                  <Option value="all">All</Option>
+                  <Option value="all">All Status</Option>
                   <Option value="pending">Pending</Option>
                   <Option value="running">Running</Option>
                   <Option value="completed">Completed</Option>
@@ -156,23 +169,8 @@ const TaskHistory = () => {
               </Form.Item>
             </Col>
 
-            {/* Ticker Filter */}
-            <Col xs={12} sm={6} md={4} lg={3}>
-              <Form.Item name="ticker" style={{ marginBottom: 0 }}>
-                <Input
-                  placeholder="Ticker"
-                  allowClear
-                  size="large"
-                  style={{
-                    borderRadius: 10,
-                    background: '#fff',
-                  }}
-                />
-              </Form.Item>
-            </Col>
-
             {/* Date Range */}
-            <Col xs={24} sm={12} md={6} lg={5}>
+            <Col xs={12} sm={10} md={6} lg={6}>
               <Form.Item name="dateRange" style={{ marginBottom: 0 }}>
                 <RangePicker
                   size="large"
@@ -187,7 +185,7 @@ const TaskHistory = () => {
             </Col>
 
             {/* Action Buttons */}
-            <Col xs={24} sm={24} md={10} lg={8} style={{ textAlign: 'right' }}>
+            <Col xs={24} sm={24} md={6} lg={7} style={{ textAlign: 'right' }}>
               <Space wrap>
                 <Button
                   type="primary"
@@ -207,14 +205,14 @@ const TaskHistory = () => {
                 </Button>
                 <Button
                   icon={<ReloadOutlined />}
-                  onClick={handleRefresh}
+                  onClick={handleReset}
                   size="large"
                   style={{
                     borderRadius: 10,
                     fontWeight: 600,
                   }}
                 >
-                  Refresh
+                  Reset
                 </Button>
                 <Button
                   type="primary"
