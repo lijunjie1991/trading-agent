@@ -91,8 +91,8 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
       onMouseMove={handleMouseMove}
       style={{
         position: 'relative',
-        marginBottom: 32,
-        borderRadius: 24,
+        marginBottom: 24,
+        borderRadius: 20,
         overflow: 'hidden',
       }}
     >
@@ -150,253 +150,217 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
           position: 'relative',
           zIndex: 1,
         }}
-        bodyStyle={{ padding: '32px' }}
+        bodyStyle={{ padding: '20px 24px' }}
       >
         {/* Main Content Container */}
         <div style={{ position: 'relative', zIndex: 3 }}>
-          {/* Top Row: Ticker, Status & Decision */}
+          {/* Single Row Layout: All content in one line */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 20,
+            alignItems: 'center',
             flexWrap: 'wrap',
-            gap: 24,
+            gap: 16,
+            minHeight: 56,
           }}>
-            {/* Left Section: Ticker & Status */}
-            <div style={{ flex: '1 1 auto', minWidth: 280 }}>
-              <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                {/* Ticker with Status Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                  <Title
-                    level={1}
-                    style={{
-                      margin: 0,
-                      color: '#fff',
-                      fontSize: '48px',
-                      fontWeight: 800,
-                      letterSpacing: '-0.02em',
-                      textShadow: '0 2px 12px rgba(0,0,0,0.2)',
-                      lineHeight: 1,
-                    }}
-                  >
-                    {task?.ticker || 'N/A'}
-                  </Title>
-
-                  {/* Enhanced Status Tag */}
-                  <Badge
-                    status={isCompleted ? 'success' : isFailed ? 'error' : 'processing'}
-                    text={
-                      <Tag
-                        style={{
-                          fontSize: 13,
-                          padding: '6px 18px',
-                          fontWeight: 700,
-                          borderRadius: 20,
-                          border: 'none',
-                          background: 'rgba(255, 255, 255, 0.25)',
-                          backdropFilter: 'blur(10px)',
-                          color: '#fff',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                        }}
-                      >
-                        {task?.status || 'UNKNOWN'}
-                      </Tag>
-                    }
-                  />
-                </div>
-
-                {/* Analysis Date */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ThunderboltFilled style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }} />
-                  <Text
-                    style={{
-                      color: 'rgba(255,255,255,0.9)',
-                      fontSize: 15,
-                      fontWeight: 500,
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    Analysis Date: {task?.analysisDate || task?.analysis_date || 'N/A'}
-                  </Text>
-                </div>
-
-                {/* View Reports Button - Prominently Displayed */}
-                {isCompleted && onViewReports && (
-                  <Button
-                    type="primary"
-                    icon={<FileTextOutlined style={{ fontSize: 18 }} />}
-                    onClick={onViewReports}
-                    className={showCelebration ? 'success-pulse' : ''}
-                    size="large"
-                    style={{
-                      height: 48,
-                      paddingLeft: 28,
-                      paddingRight: 28,
-                      fontSize: 16,
-                      fontWeight: 700,
-                      borderRadius: 12,
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      border: 'none',
-                      boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4), inset 0 -2px 0 rgba(0,0,0,0.1)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      marginTop: 4,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)'
-                      e.currentTarget.style.boxShadow = '0 12px 32px rgba(16, 185, 129, 0.5)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0) scale(1)'
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.4)'
-                    }}
-                  >
-                    <TrophyOutlined style={{ fontSize: 18, marginRight: 8 }} />
-                    View Complete Analysis
-                  </Button>
-                )}
-              </Space>
-            </div>
-
-            {/* Right Section: Final Decision Display */}
-            {decisionStyle && (isCompleted || isFailed) && (
-              <div
+            {/* Left Section: Ticker, Status & Date */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: '1 1 auto', minWidth: 280 }}>
+              {/* Ticker */}
+              <Title
+                level={1}
                 style={{
-                  textAlign: 'right',
-                  animation: showCelebration ? 'bounceIn 0.6s ease-out' : 'none',
+                  margin: 0,
+                  color: '#fff',
+                  fontSize: '38px',
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.2)',
+                  lineHeight: 1,
                 }}
               >
+                {task?.ticker || 'N/A'}
+              </Title>
+
+              {/* Status Badge */}
+              <Badge
+                status={isCompleted ? 'success' : isFailed ? 'error' : 'processing'}
+                text={
+                  <Tag
+                    style={{
+                      fontSize: 12,
+                      padding: '4px 14px',
+                      fontWeight: 700,
+                      borderRadius: 16,
+                      border: 'none',
+                      background: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(10px)',
+                      color: '#fff',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {task?.status || 'UNKNOWN'}
+                  </Tag>
+                }
+              />
+
+              {/* Date with Icon */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ThunderboltFilled style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }} />
                 <Text
                   style={{
                     color: 'rgba(255,255,255,0.85)',
                     fontSize: 13,
-                    fontWeight: 600,
-                    display: 'block',
-                    marginBottom: 12,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
+                    fontWeight: 500,
                   }}
                 >
-                  Trading Decision
+                  {task?.analysisDate || task?.analysis_date || 'N/A'}
                 </Text>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '16px 28px',
-                    borderRadius: 16,
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    backdropFilter: 'blur(10px)',
-                    border: '2px solid rgba(255, 255, 255, 0.3)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  <span style={{ fontSize: 36 }}>{decisionStyle.emoji}</span>
-                  <div style={{ textAlign: 'left' }}>
-                    <Text
-                      style={{
-                        color: '#fff',
-                        fontSize: 28,
-                        fontWeight: 800,
-                        display: 'block',
-                        lineHeight: 1,
-                        textShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                      }}
-                    >
-                      {decisionStyle.text}
-                    </Text>
-                    <Text
-                      style={{
-                        color: 'rgba(255,255,255,0.8)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        display: 'block',
-                        marginTop: 4,
-                      }}
-                    >
-                      Recommended
-                    </Text>
-                  </div>
+              </div>
+            </div>
+
+            {/* Middle Section: Decision (if completed) */}
+            {decisionStyle && (isCompleted || isFailed) && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 20px',
+                  borderRadius: 14,
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                  animation: showCelebration ? 'bounceIn 0.6s ease-out' : 'none',
+                }}
+              >
+                <span style={{ fontSize: 24 }}>{decisionStyle.emoji}</span>
+                <div>
+                  <Text
+                    style={{
+                      color: '#fff',
+                      fontSize: 20,
+                      fontWeight: 800,
+                      display: 'block',
+                      lineHeight: 1,
+                      textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    {decisionStyle.text}
+                  </Text>
+                  <Text
+                    style={{
+                      color: 'rgba(255,255,255,0.75)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      display: 'block',
+                      marginTop: 2,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Recommended
+                  </Text>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Processing Status Bar */}
-          {isProcessing && processingInfo && (
-            <div
-              style={{
-                marginTop: 20,
-                paddingTop: 20,
-                borderTop: '1px solid rgba(255,255,255,0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 16,
-              }}
-            >
-              <Space size={12} align="center">
+            {/* Right Section: Action Button */}
+            {isCompleted && onViewReports && (
+              <Button
+                type="primary"
+                icon={<TrophyOutlined style={{ fontSize: 16 }} />}
+                onClick={onViewReports}
+                className={showCelebration ? 'success-pulse' : ''}
+                size="large"
+                style={{
+                  height: 44,
+                  paddingLeft: 24,
+                  paddingRight: 24,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  border: 'none',
+                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35), inset 0 -2px 0 rgba(0,0,0,0.1)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.45)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)'
+                }}
+              >
+                View Reports
+              </Button>
+            )}
+
+            {/* Processing Indicator (inline) */}
+            {isProcessing && processingInfo && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '8px 16px',
+                  borderRadius: 20,
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
                 <Badge
                   count={processingInfo.badge}
                   style={{
                     background: 'rgba(255, 255, 255, 0.3)',
                     color: '#fff',
                     fontWeight: 700,
-                    fontSize: 10,
-                    height: 20,
-                    lineHeight: '20px',
-                    borderRadius: 10,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    fontSize: 9,
+                    height: 18,
+                    lineHeight: '18px',
+                    borderRadius: 9,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                    padding: '0 6px',
                   }}
                 />
                 <div
                   className="icon-glow"
                   style={{
                     color: '#fff',
-                    fontSize: 18,
+                    fontSize: 16,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
                   }}
                 >
                   {processingInfo.icon}
                 </div>
-                <Text strong style={{ color: '#fff', fontSize: 15, fontWeight: 600 }}>
+                <Text strong style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
                   {processingInfo.text}
                 </Text>
                 {processingInfo.showTypingDots && (
-                  <div className="typing-dots" style={{ marginLeft: 4 }}>
+                  <div className="typing-dots" style={{ marginLeft: 2 }}>
                     <span style={{ background: '#fff' }}></span>
                     <span style={{ background: '#fff' }}></span>
                     <span style={{ background: '#fff' }}></span>
                   </div>
                 )}
-              </Space>
-
-              {timeSinceUpdate > 0 && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 16px',
-                    borderRadius: 20,
-                    background: 'rgba(255, 255, 255, 0.15)',
-                    backdropFilter: 'blur(10px)',
-                  }}
-                >
-                  <SyncOutlined spin style={{ color: '#fff', fontSize: 14 }} />
-                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: 500 }}>
-                    Updated {timeSinceUpdate}s ago
-                  </Text>
-                </div>
-              )}
-            </div>
-          )}
+                {timeSinceUpdate > 0 && (
+                  <>
+                    <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.3)', margin: '0 4px' }} />
+                    <SyncOutlined spin style={{ color: '#fff', fontSize: 12 }} />
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
+                      {timeSinceUpdate}s
+                    </Text>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -408,10 +372,10 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
             bottom: 0,
             left: 0,
             right: 0,
-            height: 4,
+            height: 3,
             background: 'rgba(255,255,255,0.2)',
             overflow: 'hidden',
-            borderRadius: '0 0 24px 24px',
+            borderRadius: '0 0 20px 20px',
           }}
         >
           <div

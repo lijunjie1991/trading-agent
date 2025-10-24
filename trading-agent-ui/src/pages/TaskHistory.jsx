@@ -65,35 +65,15 @@ const TaskHistory = () => {
       page: 0, // Reset to first page on new search
       status: values.status === 'all' ? undefined : values.status?.toUpperCase(),
       ticker: values.ticker || undefined,
-      taskId: values.taskId || undefined,
       startDate: startDate,
       endDate: endDate,
       searchKeyword: values.searchKeyword || undefined,
-      sortBy: values.sortBy || 'createdAt',
-      sortOrder: values.sortOrder || 'DESC',
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
     }
 
     setQueryParams(newQueryParams)
     dispatch(queryTasks(newQueryParams))
-  }
-
-  // Handle reset filters
-  const handleReset = () => {
-    form.resetFields()
-    const defaultParams = {
-      page: 0,
-      pageSize: 12,
-      status: undefined,
-      ticker: undefined,
-      taskId: undefined,
-      startDate: undefined,
-      endDate: undefined,
-      searchKeyword: undefined,
-      sortBy: 'createdAt',
-      sortOrder: 'DESC',
-    }
-    setQueryParams(defaultParams)
-    dispatch(queryTasks(defaultParams))
   }
 
   // Handle refresh
@@ -123,34 +103,51 @@ const TaskHistory = () => {
 
   return (
     <div>
-      {/* Search Filters Card */}
-      <Card style={{ marginBottom: 24 }} title="Search Filters">
+      {/* Compact Search Panel */}
+      <Card
+        bordered={false}
+        style={{
+          marginBottom: 24,
+          borderRadius: 16,
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+          border: '1px solid rgba(102, 126, 234, 0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+        bodyStyle={{ padding: '20px 24px' }}
+      >
         <Form
           form={form}
-          layout="vertical"
           onFinish={handleSearch}
           initialValues={{
             status: 'all',
-            sortBy: 'createdAt',
-            sortOrder: 'DESC',
           }}
         >
-          <Row gutter={16}>
-            {/* General Search */}
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item label="Search Keyword" name="searchKeyword">
+          <Row gutter={[16, 16]} align="middle">
+            {/* Search Keyword */}
+            <Col xs={24} sm={12} md={6} lg={5}>
+              <Form.Item name="searchKeyword" style={{ marginBottom: 0 }}>
                 <Input
-                  placeholder="Ticker, Task ID, or Decision"
+                  placeholder="🔍 Search..."
                   allowClear
+                  size="large"
+                  style={{
+                    borderRadius: 10,
+                    background: '#fff',
+                  }}
                 />
               </Form.Item>
             </Col>
 
             {/* Status Filter */}
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item label="Status" name="status">
-                <Select>
-                  <Option value="all">All Status</Option>
+            <Col xs={12} sm={6} md={4} lg={3}>
+              <Form.Item name="status" style={{ marginBottom: 0 }}>
+                <Select
+                  size="large"
+                  style={{
+                    borderRadius: 10,
+                  }}
+                >
+                  <Option value="all">All</Option>
                   <Option value="pending">Pending</Option>
                   <Option value="running">Running</Option>
                   <Option value="completed">Completed</Option>
@@ -160,94 +157,84 @@ const TaskHistory = () => {
             </Col>
 
             {/* Ticker Filter */}
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item label="Ticker" name="ticker">
-                <Input placeholder="e.g. AAPL" allowClear />
-              </Form.Item>
-            </Col>
-
-            {/* Task ID Filter */}
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item label="Task ID" name="taskId">
-                <Input placeholder="Enter Task ID" allowClear />
-              </Form.Item>
-            </Col>
-
-            {/* Date Range Filter */}
-            <Col xs={24} sm={12} md={8}>
-              <Form.Item label="Analysis Date Range" name="dateRange">
-                <RangePicker
-                  style={{ width: '100%' }}
-                  format="YYYY-MM-DD"
+            <Col xs={12} sm={6} md={4} lg={3}>
+              <Form.Item name="ticker" style={{ marginBottom: 0 }}>
+                <Input
+                  placeholder="Ticker"
+                  allowClear
+                  size="large"
+                  style={{
+                    borderRadius: 10,
+                    background: '#fff',
+                  }}
                 />
               </Form.Item>
             </Col>
 
-            {/* Sort By */}
-            <Col xs={24} sm={12} md={4}>
-              <Form.Item label="Sort By" name="sortBy">
-                <Select>
-                  <Option value="createdAt">Created Date</Option>
-                  <Option value="completedAt">Completed Date</Option>
-                  <Option value="ticker">Ticker</Option>
-                  <Option value="status">Status</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-
-            {/* Sort Order */}
-            <Col xs={24} sm={12} md={4}>
-              <Form.Item label="Sort Order" name="sortOrder">
-                <Select>
-                  <Option value="DESC">Descending</Option>
-                  <Option value="ASC">Ascending</Option>
-                </Select>
+            {/* Date Range */}
+            <Col xs={24} sm={12} md={6} lg={5}>
+              <Form.Item name="dateRange" style={{ marginBottom: 0 }}>
+                <RangePicker
+                  size="large"
+                  style={{
+                    width: '100%',
+                    borderRadius: 10,
+                  }}
+                  format="YYYY-MM-DD"
+                  placeholder={['Start Date', 'End Date']}
+                />
               </Form.Item>
             </Col>
 
             {/* Action Buttons */}
-            <Col xs={24} md={8}>
-              <Form.Item label=" ">
-                <Space>
-                  <Button
-                    type="primary"
-                    icon={<SearchOutlined />}
-                    htmlType="submit"
-                    loading={loading}
-                  >
-                    Search
-                  </Button>
-                  <Button onClick={handleReset}>
-                    Reset
-                  </Button>
-                  <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
-                    Refresh
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<PlusCircleOutlined />}
-                    onClick={handleNewAnalysis}
-                    style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      border: 'none',
-                    }}
-                  >
-                    New Analysis
-                  </Button>
-                </Space>
-              </Form.Item>
+            <Col xs={24} sm={24} md={10} lg={8} style={{ textAlign: 'right' }}>
+              <Space wrap>
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  htmlType="submit"
+                  loading={loading}
+                  size="large"
+                  style={{
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                  }}
+                >
+                  Search
+                </Button>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleRefresh}
+                  size="large"
+                  style={{
+                    borderRadius: 10,
+                    fontWeight: 600,
+                  }}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusCircleOutlined />}
+                  onClick={handleNewAnalysis}
+                  size="large"
+                  style={{
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  New Analysis
+                </Button>
+              </Space>
             </Col>
           </Row>
         </Form>
-      </Card>
-
-      {/* Results Summary */}
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <span>Total: {pagination.totalElements} tasks</span>
-          <span>|</span>
-          <span>Page {pagination.currentPage + 1} of {pagination.totalPages}</span>
-        </Space>
       </Card>
 
       {/* Task Cards */}
@@ -274,9 +261,24 @@ const TaskHistory = () => {
             ))}
           </Row>
 
-          {/* Pagination */}
-          <Card style={{ marginTop: 24 }}>
-            <Row justify="center">
+          {/* Bottom Pagination with Summary */}
+          {pagination.totalPages > 1 && (
+            <div
+              style={{
+                marginTop: 32,
+                padding: '20px',
+                background: '#fafafa',
+                borderRadius: 12,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 16,
+              }}
+            >
+              <Text type="secondary" style={{ fontSize: 14 }}>
+                Showing {pagination.currentPage * pagination.pageSize + 1} - {Math.min((pagination.currentPage + 1) * pagination.pageSize, pagination.totalElements)} of {pagination.totalElements} tasks
+              </Text>
               <Pagination
                 current={pagination.currentPage + 1}
                 pageSize={pagination.pageSize}
@@ -284,11 +286,10 @@ const TaskHistory = () => {
                 onChange={handlePageChange}
                 showSizeChanger
                 showQuickJumper
-                showTotal={(total) => `Total ${total} tasks`}
                 pageSizeOptions={['12', '24', '48', '96']}
               />
-            </Row>
-          </Card>
+            </div>
+          )}
         </>
       )}
     </div>
