@@ -34,6 +34,40 @@ const MessagePanel = ({ messages }) => {
     prevMessageCountRef.current = messages.length
   }, [messages])
 
+  const getMessageIcon = (message) => {
+    const { messageType, content } = message
+
+    // For 'message' type, check the role to determine the icon
+    if (messageType === 'message' && content && content.role) {
+      if (content.role === 'user') {
+        return '👤' // User icon
+      }
+      if (content.role === 'assistant') {
+        return '🤖' // AI/Bot icon for reasoning
+      }
+    }
+
+    // Default to the helper function
+    return getMessageTypeIcon(messageType)
+  }
+
+  const getMessageLabel = (message) => {
+    const { messageType, content } = message
+
+    // For 'message' type, check the role to determine the label
+    if (messageType === 'message' && content && content.role) {
+      if (content.role === 'user') {
+        return 'USER INPUT'
+      }
+      if (content.role === 'assistant') {
+        return 'REASONING'
+      }
+    }
+
+    // Default to the helper function
+    return getMessageTypeLabel(messageType)
+  }
+
   const renderMessageContent = (message) => {
     // Database returns messageType and content
     const { messageType, content } = message
@@ -216,7 +250,7 @@ const MessagePanel = ({ messages }) => {
                   }}
                 >
                   <Text strong style={{ fontSize: 13 }}>
-                    {getMessageTypeIcon(message.messageType)} {getMessageTypeLabel(message.messageType)}
+                    {getMessageIcon(message)} {getMessageLabel(message)}
                   </Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {formatTime(message.createdAt)}

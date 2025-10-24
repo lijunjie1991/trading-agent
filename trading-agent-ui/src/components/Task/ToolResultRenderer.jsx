@@ -18,22 +18,30 @@ const ToolResultRenderer = ({ data }) => {
     result_preview = '',
   } = data
 
-  // Normalize line breaks - convert \n to actual newlines if needed
-  const normalizedContent = typeof result_preview === 'string'
-    ? result_preview.replace(/\\n/g, '\n')
-    : result_preview
+  // First, get the content and normalize it
+  let normalizedContent = result_preview
+
+  // Normalize line breaks - convert escaped \n to actual newlines if it's a string
+  if (typeof normalizedContent === 'string') {
+    // Replace literal \n characters with actual newlines
+    normalizedContent = normalizedContent.replace(/\\n/g, '\n')
+  }
 
   // Detect if the content is markdown-like (contains ## or * or numbered lists)
-  const isMarkdownContent = normalizedContent.includes('##') ||
-                           normalizedContent.includes('\n- ') ||
-                           /^\d+\.\s/.test(normalizedContent)
+  const isMarkdownContent = typeof normalizedContent === 'string' && (
+    normalizedContent.includes('##') ||
+    normalizedContent.includes('\n- ') ||
+    normalizedContent.includes('\n* ') ||
+    /^\d+\.\s/m.test(normalizedContent) ||
+    /\n\d+\.\s/m.test(normalizedContent)
+  )
 
   // Try to parse the preview as JSON if it doesn't look like markdown
   let parsedContent = null
   let isJsonContent = false
-  if (!isMarkdownContent) {
+  if (!isMarkdownContent && typeof normalizedContent === 'string') {
     try {
-      parsedContent = JSON.parse(normalizedContent)
+      parsedContent = JSON.parse(result_preview) // Use original, not normalized
       isJsonContent = true
     } catch (e) {
       // Not JSON, will render as text or markdown
