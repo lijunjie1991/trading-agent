@@ -18,14 +18,12 @@ const ToolResultRenderer = ({ data }) => {
     result_preview = '',
   } = data
 
-  // First, get the content and normalize it
+  // First, get the content
   let normalizedContent = result_preview
 
-  // Normalize line breaks - convert escaped \n to actual newlines if it's a string
-  if (typeof normalizedContent === 'string') {
-    // Replace literal \n characters with actual newlines
-    normalizedContent = normalizedContent.replace(/\\n/g, '\n')
-  }
+  // The content comes from JSON parsing, so \n in the JSON string
+  // has already been converted to actual newline characters by JSON.parse()
+  // We don't need to do any replacement here - the newlines are already there
 
   // Detect if the content is markdown-like (contains ## or * or numbered lists)
   const isMarkdownContent = typeof normalizedContent === 'string' && (
@@ -41,7 +39,7 @@ const ToolResultRenderer = ({ data }) => {
   let isJsonContent = false
   if (!isMarkdownContent && typeof normalizedContent === 'string') {
     try {
-      parsedContent = JSON.parse(result_preview) // Use original, not normalized
+      parsedContent = JSON.parse(result_preview)
       isJsonContent = true
     } catch (e) {
       // Not JSON, will render as text or markdown
@@ -112,7 +110,7 @@ const ToolResultRenderer = ({ data }) => {
                 {JSON.stringify(parsedContent, null, 2)}
               </pre>
             ) : isMarkdownContent ? (
-              // Render as markdown
+              // Render as markdown with breaks enabled (single \n creates <br>)
               <div
                 className="markdown-content"
                 style={{
@@ -120,7 +118,9 @@ const ToolResultRenderer = ({ data }) => {
                   color: '#2d3748',
                   lineHeight: 1.8,
                 }}
-                dangerouslySetInnerHTML={{ __html: marked.parse(normalizedContent || '') }}
+                dangerouslySetInnerHTML={{
+                  __html: marked.parse(normalizedContent || '', { breaks: true, gfm: true })
+                }}
               />
             ) : (
               // Render as plain text with formatting
