@@ -94,14 +94,6 @@ public class TaskService {
         return toTaskResponse(task);
     }
 
-    public List<TaskResponse> getUserTasks() {
-        User currentUser = authService.getCurrentUser();
-        List<Task> tasks = taskRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId());
-        return tasks.stream()
-                .map(this::toTaskResponse)
-                .collect(Collectors.toList());
-    }
-
     /**
      * Get user tasks with pagination and filtering
      */

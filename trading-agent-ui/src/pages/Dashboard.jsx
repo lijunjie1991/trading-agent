@@ -9,7 +9,7 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons'
-import { fetchTaskStats, fetchTasks } from '../store/slices/taskSlice'
+import { fetchTaskStats, queryTasks } from '../store/slices/taskSlice'
 import TaskCard from '../components/Task/TaskCard'
 import Loading from '../components/Common/Loading'
 
@@ -22,7 +22,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     dispatch(fetchTaskStats())
-    dispatch(fetchTasks({ limit: 6 }))
+    // Query recent 9 tasks using pagination API
+    dispatch(queryTasks({
+      page: 0,
+      pageSize: 9,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
+    }))
   }, [dispatch])
 
   const handleNewAnalysis = () => {
