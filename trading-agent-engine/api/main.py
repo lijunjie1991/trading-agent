@@ -333,7 +333,7 @@ def process_messages(
         processed_message_ids: Set of already processed message IDs
     """
     print(f"---------------------------------------")
-    print(json.dumps(chunk, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps(chunk, ensure_ascii=False, indent=2, default=str))
     print(f"---------------------------------------")
 
     messages = chunk.get("messages", [])
