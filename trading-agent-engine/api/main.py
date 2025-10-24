@@ -348,20 +348,18 @@ def process_messages(
         # Get unique message ID
         message_id = get_message_id(message)
 
+        # Get message type
+        msg_type = get_message_type(message)
+
+        print(f"{msg_type} || {has_report} || {message}")
+        print(f"---------------------------------------------------------------------------------------------------------------------")
+
         # Skip if already processed
         if message_id in processed_message_ids:
             continue
 
         # Mark as processed
         processed_message_ids.add(message_id)
-
-        # Get message type
-        msg_type = get_message_type(message)
-
-
-        print(f"{message}")
-        print(f"---------------------------------------------------------------------------------------------------------------------")
-        print(f"---------------------------------------------------------------------------------------------------------------------")
 
         # === Process AIMessage ===
         if msg_type == "ai":
