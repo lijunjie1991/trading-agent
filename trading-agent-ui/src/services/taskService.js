@@ -39,6 +39,15 @@ class TaskService {
   }
 
   /**
+   * Query tasks with pagination and filters
+   */
+  async queryTasks(queryRequest = {}) {
+    const response = await api.post('/api/v1/tasks/query', queryRequest)
+    // Backend returns: { code, message, data: PageResponse, timestamp }
+    return response.data.data || response.data
+  }
+
+  /**
    * Cancel task
    */
   async cancelTask(taskId) {

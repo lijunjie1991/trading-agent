@@ -3,6 +3,8 @@ package com.tradingagent.service.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tradingagent.service.common.ResultCode;
+import com.tradingagent.service.dto.PageResponse;
+import com.tradingagent.service.dto.TaskQueryRequest;
 import com.tradingagent.service.dto.TaskRequest;
 import com.tradingagent.service.dto.TaskResponse;
 import com.tradingagent.service.entity.Report;
@@ -17,6 +19,10 @@ import com.tradingagent.service.repository.TaskMessageRepository;
 import com.tradingagent.service.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,6 +100,57 @@ public class TaskService {
         return tasks.stream()
                 .map(this::toTaskResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get user tasks with pagination and filtering
+     */
+    public PageResponse<TaskResponse> getUserTasksWithPagination(TaskQueryRequest queryRequest) {
+        User currentUser = authService.getCurrentUser();
+
+        // Validate and set defaults
+        queryRequest.validate();
+
+        // Create Pageable with sorting
+        Sort sort = Sort.by(
+            queryRequest.getSortOrder().equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC,
+            queryRequest.getSortBy()
+        );
+        Pageable pageable = PageRequest.of(queryRequest.getPage(), queryRequest.getPageSize(), sort);
+
+        // Parse date filters
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        if (queryRequest.getStartDate() != null && !queryRequest.getStartDate().trim().isEmpty()) {
+            try {
+                startDate = LocalDate.parse(queryRequest.getStartDate());
+            } catch (Exception e) {
+                log.warn("Invalid startDate format: {}", queryRequest.getStartDate());
+            }
+        }
+        if (queryRequest.getEndDate() != null && !queryRequest.getEndDate().trim().isEmpty()) {
+            try {
+                endDate = LocalDate.parse(queryRequest.getEndDate());
+            } catch (Exception e) {
+                log.warn("Invalid endDate format: {}", queryRequest.getEndDate());
+            }
+        }
+
+        // Query with filters
+        Page<Task> taskPage = taskRepository.findTasksWithFilters(
+            currentUser.getId(),
+            queryRequest.getStatus(),
+            queryRequest.getTicker(),
+            queryRequest.getTaskId(),
+            startDate,
+            endDate,
+            queryRequest.getSearchKeyword(),
+            pageable
+        );
+
+        // Convert to PageResponse
+        Page<TaskResponse> responsePage = taskPage.map(this::toTaskResponse);
+        return PageResponse.of(responsePage);
     }
 
     public TaskResponse getTaskById(String taskId) {

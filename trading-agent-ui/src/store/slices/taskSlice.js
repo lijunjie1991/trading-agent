@@ -18,6 +18,16 @@ const initialState = {
     failed: 0,
   },
 
+  // Pagination
+  pagination: {
+    currentPage: 0,
+    pageSize: 12,
+    totalElements: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrevious: false,
+  },
+
   // Task messages (from polling)
   messages: [],
   lastTimestamp: null, // Track last fetched message timestamp
@@ -82,6 +92,18 @@ export const fetchTasks = createAsyncThunk(
   async (params, { rejectWithValue }) => {
     try {
       const data = await taskService.listTasks(params)
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const queryTasks = createAsyncThunk(
+  'task/queryTasks',
+  async (queryRequest, { rejectWithValue }) => {
+    try {
+      const data = await taskService.queryTasks(queryRequest)
       return data
     } catch (error) {
       return rejectWithValue(error.message)
@@ -256,6 +278,31 @@ const taskSlice = createSlice({
       state.error = null
     })
     builder.addCase(fetchTasks.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload
+    })
+
+    // Query tasks with pagination
+    builder.addCase(queryTasks.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(queryTasks.fulfilled, (state, action) => {
+      state.loading = false
+      // Backend returns PageResponse: { content, currentPage, pageSize, totalElements, totalPages, hasNext, hasPrevious }
+      const pageResponse = action.payload
+      state.tasks = pageResponse.content || []
+      state.pagination = {
+        currentPage: pageResponse.currentPage || 0,
+        pageSize: pageResponse.pageSize || 12,
+        totalElements: pageResponse.totalElements || 0,
+        totalPages: pageResponse.totalPages || 0,
+        hasNext: pageResponse.hasNext || false,
+        hasPrevious: pageResponse.hasPrevious || false,
+      }
+      state.error = null
+    })
+    builder.addCase(queryTasks.rejected, (state, action) => {
       state.loading = false
       state.error = action.payload
     })
