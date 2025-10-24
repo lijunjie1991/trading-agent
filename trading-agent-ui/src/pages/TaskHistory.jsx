@@ -11,7 +11,8 @@ import {
   Input,
   Select,
   DatePicker,
-  Pagination
+  Pagination,
+  Typography
 } from 'antd'
 import { PlusCircleOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -22,6 +23,7 @@ import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
 const { Option } = Select
+const { Text } = Typography
 
 const TaskHistory = () => {
   const navigate = useNavigate()
@@ -134,9 +136,9 @@ const TaskHistory = () => {
             status: 'all',
           }}
         >
-          <Row gutter={[16, 16]} align="middle">
+          <Row gutter={[12, 16]} align="middle">
             {/* Search Keyword */}
-            <Col xs={24} sm={12} md={8} lg={7}>
+            <Col xs={24} sm={24} md={10} lg={9}>
               <Form.Item name="searchKeyword" style={{ marginBottom: 0 }}>
                 <Input
                   placeholder="Search by Ticker, Task ID, or Decision..."
@@ -151,7 +153,7 @@ const TaskHistory = () => {
             </Col>
 
             {/* Status Filter */}
-            <Col xs={12} sm={6} md={4} lg={4}>
+            <Col xs={8} sm={6} md={4} lg={3}>
               <Form.Item name="status" style={{ marginBottom: 0 }}>
                 <Select
                   placeholder="Status"
@@ -170,7 +172,7 @@ const TaskHistory = () => {
             </Col>
 
             {/* Date Range */}
-            <Col xs={12} sm={10} md={6} lg={6}>
+            <Col xs={16} sm={10} md={6} lg={6}>
               <Form.Item name="dateRange" style={{ marginBottom: 0 }}>
                 <RangePicker
                   size="large"
@@ -179,14 +181,14 @@ const TaskHistory = () => {
                     borderRadius: 10,
                   }}
                   format="YYYY-MM-DD"
-                  placeholder={['Start Date', 'End Date']}
+                  placeholder={['Start', 'End']}
                 />
               </Form.Item>
             </Col>
 
-            {/* Action Buttons */}
-            <Col xs={24} sm={24} md={6} lg={7} style={{ textAlign: 'right' }}>
-              <Space wrap>
+            {/* Action Buttons - Compressed */}
+            <Col xs={24} sm={8} md={4} lg={6}>
+              <Space size={8} wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
                 <Button
                   type="primary"
                   icon={<SearchOutlined />}
@@ -199,6 +201,7 @@ const TaskHistory = () => {
                     border: 'none',
                     fontWeight: 600,
                     boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                    minWidth: 100,
                   }}
                 >
                   Search
@@ -210,6 +213,7 @@ const TaskHistory = () => {
                   style={{
                     borderRadius: 10,
                     fontWeight: 600,
+                    minWidth: 90,
                   }}
                 >
                   Reset
@@ -225,6 +229,7 @@ const TaskHistory = () => {
                     border: 'none',
                     fontWeight: 600,
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                    minWidth: 140,
                   }}
                 >
                   New Analysis
