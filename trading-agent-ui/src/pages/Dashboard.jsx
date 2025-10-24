@@ -89,24 +89,26 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
         <Col xs={24} sm={12} lg={6}>
           <Card
             bordered={false}
             style={{
               borderRadius: 12,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.2)',
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)',
+              height: '100%',
             }}
+            bodyStyle={{ padding: '20px' }}
           >
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, fontWeight: 500 }}>
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500 }}>
                 Total Analyses
               </Text>
-              <Title level={2} style={{ color: '#fff', margin: '8px 0', fontSize: '36px', fontWeight: 700 }}>
+              <Title level={2} style={{ color: '#fff', margin: '4px 0', fontSize: '32px', fontWeight: 700 }}>
                 {taskStats.total || 0}
               </Title>
-              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>
                 All time
               </Text>
             </Space>
@@ -119,20 +121,22 @@ const Dashboard = () => {
             style={{
               borderRadius: 12,
               border: '2px solid #f59e0b',
-              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)',
+              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.08)',
+              height: '100%',
             }}
+            bodyStyle={{ padding: '20px' }}
           >
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Space>
-                <ClockCircleOutlined style={{ fontSize: 20, color: '#f59e0b' }} />
-                <Text style={{ color: '#78716c', fontSize: 14, fontWeight: 500 }}>
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <Space size={6}>
+                <ClockCircleOutlined style={{ fontSize: 16, color: '#f59e0b' }} />
+                <Text style={{ color: '#78716c', fontSize: 13, fontWeight: 500 }}>
                   In Progress
                 </Text>
               </Space>
-              <Title level={2} style={{ color: '#292524', margin: '8px 0', fontSize: '36px', fontWeight: 700 }}>
+              <Title level={2} style={{ color: '#292524', margin: '4px 0', fontSize: '32px', fontWeight: 700 }}>
                 {(taskStats.pending || 0) + (taskStats.running || 0)}
               </Title>
-              <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
                 {taskStats.pending || 0} pending · {taskStats.running || 0} running
               </Text>
             </Space>
@@ -145,20 +149,22 @@ const Dashboard = () => {
             style={{
               borderRadius: 12,
               border: '2px solid #10b981',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.1)',
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)',
+              height: '100%',
             }}
+            bodyStyle={{ padding: '20px' }}
           >
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Space>
-                <CheckCircleOutlined style={{ fontSize: 20, color: '#10b981' }} />
-                <Text style={{ color: '#78716c', fontSize: 14, fontWeight: 500 }}>
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <Space size={6}>
+                <CheckCircleOutlined style={{ fontSize: 16, color: '#10b981' }} />
+                <Text style={{ color: '#78716c', fontSize: 13, fontWeight: 500 }}>
                   Completed
                 </Text>
               </Space>
-              <Title level={2} style={{ color: '#292524', margin: '8px 0', fontSize: '36px', fontWeight: 700 }}>
+              <Title level={2} style={{ color: '#292524', margin: '4px 0', fontSize: '32px', fontWeight: 700 }}>
                 {taskStats.completed || 0}
               </Title>
-              <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
                 Successfully analyzed
               </Text>
             </Space>
@@ -171,20 +177,22 @@ const Dashboard = () => {
             style={{
               borderRadius: 12,
               border: '2px solid #8b5cf6',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.1)',
+              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.08)',
+              height: '100%',
             }}
+            bodyStyle={{ padding: '20px' }}
           >
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Space>
-                <TrophyOutlined style={{ fontSize: 20, color: '#8b5cf6' }} />
-                <Text style={{ color: '#78716c', fontSize: 14, fontWeight: 500 }}>
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              <Space size={6}>
+                <TrophyOutlined style={{ fontSize: 16, color: '#8b5cf6' }} />
+                <Text style={{ color: '#78716c', fontSize: 13, fontWeight: 500 }}>
                   Success Rate
                 </Text>
               </Space>
-              <Title level={2} style={{ color: '#292524', margin: '8px 0', fontSize: '36px', fontWeight: 700 }}>
+              <Title level={2} style={{ color: '#292524', margin: '4px 0', fontSize: '32px', fontWeight: 700 }}>
                 {successRate}%
               </Title>
-              <Text type="secondary" style={{ fontSize: 13 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
                 {taskStats.failed || 0} failed
               </Text>
             </Space>
