@@ -24,7 +24,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -181,21 +180,32 @@ public class TaskService {
 
     public Map<String, Long> getTaskStats() {
         User currentUser = authService.getCurrentUser();
-        List<Task> userTasks = taskRepository.findByUserIdOrderByCreatedAtDesc(currentUser.getId());
 
-        long total = userTasks.size();
-        long pending = userTasks.stream().filter(t -> "PENDING".equals(t.getStatus())).count();
-        long running = userTasks.stream().filter(t -> "RUNNING".equals(t.getStatus())).count();
-        long completed = userTasks.stream().filter(t -> "COMPLETED".equals(t.getStatus())).count();
-        long failed = userTasks.stream().filter(t -> "FAILED".equals(t.getStatus())).count();
+        // Use single database query with GROUP BY for better performance
+        List<Object[]> statusCounts = taskRepository.countTasksByStatusGrouped(currentUser.getId());
 
+        // Initialize all counters to 0
         Map<String, Long> stats = new java.util.HashMap<>();
-        stats.put("total", total);
-        stats.put("pending", pending);
-        stats.put("running", running);
-        stats.put("completed", completed);
-        stats.put("failed", failed);
+        stats.put("total", 0L);
+        stats.put("pending", 0L);
+        stats.put("running", 0L);
+        stats.put("completed", 0L);
+        stats.put("failed", 0L);
 
+        // Process results and calculate total
+        long total = 0L;
+        for (Object[] row : statusCounts) {
+            String status = (String) row[0];
+            Long count = (Long) row[1];
+            total += count;
+
+            // Map status to lowercase for consistency
+            if (status != null) {
+                stats.put(status.toLowerCase(), count);
+            }
+        }
+
+        stats.put("total", total);
         return stats;
     }
 

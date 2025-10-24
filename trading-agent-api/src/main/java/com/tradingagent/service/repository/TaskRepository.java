@@ -23,6 +23,13 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     List<Task> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, String status);
 
     /**
+     * Get task statistics grouped by status in a single query
+     * Returns List of Object[] where [0] = status, [1] = count
+     */
+    @Query("SELECT t.status, COUNT(t) FROM Task t WHERE t.user.id = :userId GROUP BY t.status")
+    List<Object[]> countTasksByStatusGrouped(@Param("userId") Long userId);
+
+    /**
      * Find tasks with pagination and dynamic filtering
      */
     @Query("SELECT t FROM Task t WHERE t.user.id = :userId " +
