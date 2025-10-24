@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider } from 'antd'
-import { ArrowLeftOutlined, FileTextOutlined } from '@ant-design/icons'
+import { FileTextOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
 import CompactHeader from '../components/Task/CompactHeader'
@@ -180,16 +180,6 @@ const TaskDetail = () => {
 
   return (
     <div className="task-detail-page">
-      {/* Floating Back Button */}
-      <Button
-        className="floating-back-button"
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/tasks')}
-        shape="circle"
-        size="large"
-        title="Back to Tasks"
-      />
-
       {/* Compact Header with integrated View Reports button */}
       <CompactHeader
         task={currentTask}

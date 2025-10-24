@@ -7,25 +7,6 @@
   position: relative;
 }
 
-/* Floating Back Button */
-.floating-back-button {
-  position: fixed;
-  top: 24px;
-  left: 24px;
-  z-index: 1000;
-  background: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-}
-
-.floating-back-button:hover {
-  transform: translateX(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  background: white !important;
-  color: #667eea !important;
-  border-color: #667eea !important;
-}
-
 /* View Reports Card */
 .view-reports-card {
   border-radius: 12px;
