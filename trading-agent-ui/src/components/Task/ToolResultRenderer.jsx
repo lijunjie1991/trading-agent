@@ -87,10 +87,37 @@ const ToolResultRenderer = ({ data }) => {
   // We don't need to do any replacement here - the newlines are already there
 
   // Check if content contains CSV data (lines with commas)
+  // A line is considered CSV if it has multiple commas and looks like tabular data
   const hasCSVLikeContent = typeof normalizedContent === 'string' &&
-    normalizedContent.split('\n').some(line =>
-      line.includes(',') && !line.trim().startsWith('#')
-    )
+    normalizedContent.split('\n').filter(line => {
+      const trimmedLine = line.trim()
+      // Skip empty lines, markdown headings, and lines that are clearly prose
+      if (!trimmedLine || trimmedLine.startsWith('#')) return false
+
+      // Count commas in the line
+      const commaCount = (trimmedLine.match(/,/g) || []).length
+
+      // A CSV line should have at least 2 commas and
+      // the comma-separated parts should be relatively short (not long sentences)
+      if (commaCount < 2) return false
+
+      const parts = trimmedLine.split(',')
+      // Check if this looks like data (short fields) rather than prose (long sentences)
+      const avgPartLength = parts.reduce((sum, part) => sum + part.trim().length, 0) / parts.length
+
+      // If average part length is short (< 30 chars), likely CSV data
+      // If most parts are numbers or very short, it's likely CSV
+      const hasNumbersOrShortParts = parts.filter(part => {
+        const p = part.trim()
+        return p.length < 30 && (
+          /^[\d\.\-,]+$/.test(p) || // Numbers
+          p === 'N/A' ||             // N/A values
+          p.length < 10              // Short labels
+        )
+      }).length
+
+      return hasNumbersOrShortParts >= parts.length * 0.6 // 60% of parts should be data-like
+    }).length >= 2 // At least 2 lines that look like CSV
 
   // Detect if the content is markdown-like
   // Check for markdown headings (# at start of line), lists, or other markdown syntax
