@@ -262,37 +262,17 @@ class MessageBuffer:
 
     def update_report_section(self, section_name: str, content: str):
         """
-        Update report section and save to database (reports table).
+        Update report section in memory.
         Matches cli/main.py MessageBuffer.update_report_section() signature.
+        Database save is handled by decorator, not here.
 
         Args:
             section_name: Report section name
             content: Report content
         """
         if section_name in self.report_sections:
-            # Check if content has actually changed (deduplicate)
-            if self.report_sections[section_name] == content:
-                # Content unchanged, skip database save
-                return
-
-            # Update in-memory section
+            # Update in-memory section (matches cli/main.py exactly)
             self.report_sections[section_name] = content
-
-            try:
-                # Increment report counter
-                increment_task_stats(self.task_id, reports=1)
-
-                # Save to database task_messages table (for streaming/progress)
-                save_task_message(self.task_id, "report", {
-                    "report_type": section_name,
-                    "content": content
-                })
-
-                # Save to database reports table (structured storage)
-                save_report(self.task_id, section_name, content)
-
-            except Exception as e:
-                print(f"⚠️ Failed to save report to database {self.task_id[:8]}: {e}")
 
 
 def extract_content_string(content):
@@ -444,6 +424,36 @@ def update_research_team_status(message_buffer: MessageBuffer, status: str):
         message_buffer.update_agent_status(agent, status)
 
 
+def create_save_report_decorator(task_id: str):
+    """
+    Create decorator for saving reports to database.
+    Matches cli/main.py save_report_section_decorator pattern.
+
+    Args:
+        task_id: Task UUID for database operations
+
+    Returns:
+        Decorator function
+    """
+    from functools import wraps
+
+    def save_report_section_decorator(obj, func_name):
+        func = getattr(obj, func_name)
+        @wraps(func)
+        def wrapper(section_name, content):
+            # Call original method first (updates in-memory state)
+            func(section_name, content)
+
+            # Read final content from memory (matches cli/main.py file write behavior)
+            if section_name in obj.report_sections and obj.report_sections[section_name] is not None:
+                final_content = obj.report_sections[section_name]
+                if final_content:
+                    # Save to database (equivalent to file overwrite "w" mode)
+                    save_report(task_id, section_name, final_content)
+        return wrapper
+    return save_report_section_decorator
+
+
 # ==================== Background Task Processing ====================
 
 
@@ -551,6 +561,10 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
 
         # Initialize MessageBuffer (matches cli/main.py)
         message_buffer = MessageBuffer(task_id)
+
+        # Apply decorator to save reports to database (matches cli/main.py decorator pattern)
+        save_report_decorator = create_save_report_decorator(task_id)
+        message_buffer.update_report_section = save_report_decorator(message_buffer, "update_report_section")
 
         # Convert selected_analysts to string values for comparison (matches cli/main.py)
         selected_analyst_values = [analyst.value for analyst in request.selected_analysts]

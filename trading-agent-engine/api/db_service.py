@@ -66,31 +66,44 @@ def update_task_status(
 
 def save_report(task_id: str, report_type: str, content: str):
     """
-    SaveTaskReport
+    Save or update task report (UPSERT behavior).
+    Matches cli/main.py file overwrite ("w" mode) behavior - only final version is saved.
 
     Args:
-        task_id: TaskUUID
+        task_id: Task UUID
         report_type: Report type
         content: Report content
     """
     db = get_db_session()
     try:
-        # First by task_id (UUID) FindTask
+        # First by task_id (UUID) Find Task
         task = db.query(Task).filter(Task.task_id == task_id).first()
         if not task:
             print(f"⚠️ Task not found: {task_id}")
             return False
 
-        # Create report，UsingDatabase primary key id
-        report = Report(
-            task_id=task.id,  # UsingDatabase primary key，notUUID
-            report_type=report_type,
-            content=content
-        )
+        # Check if report already exists for this task and type
+        existing_report = db.query(Report).filter(
+            Report.task_id == task.id,
+            Report.report_type == report_type
+        ).first()
 
-        db.add(report)
+        if existing_report:
+            # Update existing report (matches file overwrite "w" mode)
+            existing_report.content = content
+            existing_report.created_at = datetime.utcnow()  # Update timestamp
+            print(f"✅ Updated report '{report_type}' for task {task_id[:8]}")
+        else:
+            # Create new report
+            report = Report(
+                task_id=task.id,  # Using database primary key, not UUID
+                report_type=report_type,
+                content=content
+            )
+            db.add(report)
+            print(f"✅ Created report '{report_type}' for task {task_id[:8]}")
+
         db.commit()
-        print(f"✅ Saved report '{report_type}' for task {task_id[:8]}")
         return True
 
     except Exception as e:
