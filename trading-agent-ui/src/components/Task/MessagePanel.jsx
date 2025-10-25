@@ -180,36 +180,12 @@ const MessagePanel = ({ messages }) => {
       }
     }
 
-    const isMarkdown = detectMarkdown(stringContent)
-
-    if (isMarkdown) {
-      return {
-        node: (
-          <div
-            className="markdown-content"
-            dangerouslySetInnerHTML={{ __html: marked.parse(stringContent || '') }}
-          />
-        ),
-        lengthHint,
-      }
-    }
-
     return {
       node: (
-        <pre
+        <div
           className="markdown-content"
-          style={{
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            margin: 0,
-            fontFamily: 'inherit',
-            fontSize: 13,
-            color: '#4a5568',
-            lineHeight: 1.7,
-          }}
-        >
-          {stringContent}
-        </pre>
+          dangerouslySetInnerHTML={{ __html: marked.parse(stringContent || '') }}
+        />
       ),
       lengthHint,
     }
@@ -269,25 +245,6 @@ const MessagePanel = ({ messages }) => {
       </table>
     </div>
   )
-
-  const detectMarkdown = (text) => {
-    if (!text || typeof text !== 'string') return false
-
-    const markdownPatterns = [
-      /^#{1,6}\s/m,
-      /^\s*[-*+]\s/m,
-      /^\s*\d+\.\s/m,
-      /```[\s\S]*```/,
-      /`[^`]+`/,
-      /\*\*[^*]+\*\*/,
-      /\*[^*]+\*/,
-      /\[.+\]\(.+\)/,
-      /^\s*>/m,
-      /\|.+\|/,
-    ]
-
-    return markdownPatterns.some((pattern) => pattern.test(text))
-  }
 
   const tryParseJsonString = (value) => {
     if (typeof value !== 'string') return null
@@ -466,6 +423,7 @@ const MessagePanel = ({ messages }) => {
       .replace(/\\"/g, '"')
       .replace(/\\'/g, "'")
       .replace(/\\\\/g, '\\')
+      .replace(/\\u([\dA-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
   }
 
   return (
