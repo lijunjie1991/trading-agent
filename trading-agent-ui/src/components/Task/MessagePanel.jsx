@@ -8,7 +8,7 @@ const { Title, Text } = Typography
 
 marked.setOptions({
   gfm: true,
-  breaks: false,
+  breaks: true,  // 允许单个换行符也产生换行效果
 })
 
 const MessagePanel = ({ messages }) => {
