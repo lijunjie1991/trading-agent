@@ -240,6 +240,25 @@
   overflow-x: auto;
 }
 
+.message-content-wrapper {
+  position: relative;
+}
+
+.message-content-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.message-content-gradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(247, 250, 252, 0.95) 70%, rgba(247, 250, 252, 1) 100%);
+  pointer-events: none;
+}
+
 /* New Message Highlight */
 .new-message-highlight {
   animation: highlightFade 2s ease-out;

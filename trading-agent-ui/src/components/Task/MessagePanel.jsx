@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Card, Typography, Empty, Space, Tag } from 'antd'
+import { Card, Typography, Empty, Space, Tag, Button } from 'antd'
 import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
 import './ProcessingIndicator.css'
@@ -14,7 +14,12 @@ marked.setOptions({
 const MessagePanel = ({ messages }) => {
   const containerRef = useRef(null)
   const [newMessageIds, setNewMessageIds] = useState(new Set())
+  const [expandedIds, setExpandedIds] = useState(new Set())
+  const [overflowingIds, setOverflowingIds] = useState(new Set())
+  const contentRefs = useRef({})
   const prevMessageCountRef = useRef(0)
+
+  const COLLAPSED_HEIGHT = 260
 
   useEffect(() => {
     if (containerRef.current) {
@@ -37,6 +42,46 @@ const MessagePanel = ({ messages }) => {
 
     prevMessageCountRef.current = messages.length
   }, [messages])
+
+  useEffect(() => {
+    const validIds = new Set(messages.map((msg) => msg.id || `${msg.createdAt}-${msg.messageType}`))
+
+    setExpandedIds((prev) => {
+      const next = new Set()
+      prev.forEach((id) => {
+        if (validIds.has(id)) next.add(id)
+      })
+      return next
+    })
+
+    Object.keys(contentRefs.current).forEach((key) => {
+      if (!validIds.has(key)) {
+        delete contentRefs.current[key]
+      }
+    })
+  }, [messages])
+
+  useEffect(() => {
+    const nextOverflow = new Set()
+    Object.entries(contentRefs.current).forEach(([id, element]) => {
+      if (element && element.scrollHeight > COLLAPSED_HEIGHT + 16) {
+        nextOverflow.add(id)
+      }
+    })
+    setOverflowingIds(nextOverflow)
+  }, [messages, expandedIds])
+
+  const toggleExpand = (messageId) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(messageId)) {
+        next.delete(messageId)
+      } else {
+        next.add(messageId)
+      }
+      return next
+    })
+  }
 
   const renderMessageContent = (message) => {
     const { content } = message
@@ -386,6 +431,8 @@ const MessagePanel = ({ messages }) => {
             {messages.map((message) => {
               const messageId = message.id || `${message.createdAt}-${message.messageType}`
               const isNewMessage = newMessageIds.has(messageId)
+              const isExpanded = expandedIds.has(messageId)
+              const isOverflowing = overflowingIds.has(messageId)
 
               return (
                 <div
@@ -414,8 +461,37 @@ const MessagePanel = ({ messages }) => {
                       {formatTime(message.createdAt)}
                     </Text>
                   </div>
-                  <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
-                    {renderMessageContent(message)}
+                  <div
+                    className={`message-content-wrapper ${isExpanded ? 'expanded' : 'collapsed'}`}
+                  >
+                    <div
+                      ref={(element) => {
+                        if (element) {
+                          contentRefs.current[messageId] = element
+                        } else {
+                          delete contentRefs.current[messageId]
+                        }
+                      }}
+                      className="message-content-body"
+                      style={{
+                        maxHeight: isExpanded ? 'none' : COLLAPSED_HEIGHT,
+                      }}
+                    >
+                      <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
+                        {renderMessageContent(message)}
+                      </div>
+                    </div>
+                    {!isExpanded && isOverflowing && <div className="message-content-gradient" />}
+                  </div>
+                  {isOverflowing && (
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, marginTop: 8 }}
+                      onClick={() => toggleExpand(messageId)}
+                    >
+                      {isExpanded ? '收起内容' : '展开更多'}
+                    </Button>
                   </div>
                 </div>
               )
