@@ -329,11 +329,33 @@ const MessagePanel = ({ messages }) => {
   const isColonSeparatedLine = (line) => {
     if (!line.includes(':')) return false
     if (/^https?:\/\//i.test(line)) return false
+
+    // 排除 Markdown 列表 (有序/无序)
+    if (/^\s*\d+\.\s/.test(line)) return false  // 1. 2. 3.
+    if (/^\s*[-*+]\s/.test(line)) return false  // - * +
+
+    // 排除包含 Markdown 加粗语法的行 (通常是列表项)
+    if (/\*\*[^*]+\*\*/.test(line)) return false
+
     const [first, ...rest] = line.split(':')
     const key = first.trim()
     const value = rest.join(':').trim()
+
     if (!key || !value) return false
+
+    // Key 应该相对简短 (真实的 key-value 表格)
     if (key.length > 50) return false
+
+    // Key 不应该包含句子结束标点
+    if (/[.!?]/.test(key)) return false
+
+    // Key 应该比较简洁，不应该有太多空格
+    const keyWords = key.split(/\s+/)
+    if (keyWords.length > 6) return false
+
+    // Value 应该相对简短 (避免误判长句子)
+    if (value.length > 200) return false
+
     return true
   }
 
