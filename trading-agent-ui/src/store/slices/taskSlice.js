@@ -259,6 +259,16 @@ const taskSlice = createSlice({
     builder.addCase(fetchTask.fulfilled, (state, action) => {
       state.loading = false
       state.currentTask = action.payload
+
+      // 从 task 对象中提取 finalDecision 字段
+      const task = action.payload
+      if (task) {
+        const decision = task.finalDecision || task.final_decision || task.decision
+        if (decision) {
+          state.finalDecision = decision
+        }
+      }
+
       state.error = null
     })
     builder.addCase(fetchTask.rejected, (state, action) => {

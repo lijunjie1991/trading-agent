@@ -81,7 +81,7 @@
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 task_id BIGINT NOT NULL,
                 message_type VARCHAR(20) NOT NULL,
-                content JSON NOT NULL,
+                content text COLLATE utf8mb4_general_ci NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 INDEX idx_task_messages_task_time (task_id, created_at),
                 CONSTRAINT fk_task_messages_task_id

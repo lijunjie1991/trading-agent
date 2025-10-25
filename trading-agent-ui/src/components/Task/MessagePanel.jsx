@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card, Typography, Empty, Space, Tag } from 'antd'
+import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
 import './ProcessingIndicator.css'
 
@@ -37,8 +38,7 @@ const MessagePanel = ({ messages }) => {
     // Database returns messageType and content
     const { messageType, content } = message
 
-    // 简单的纯文本显示方式
-    // 将 content 转换为纯文本字符串
+    // 将 content 转换为文本字符串
     let textContent = ''
 
     if (typeof content === 'string') {
@@ -57,21 +57,57 @@ const MessagePanel = ({ messages }) => {
       textContent = String(content || '')
     }
 
-    return (
-      <pre
-        style={{
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          margin: 0,
-          fontFamily: 'inherit',
-          fontSize: 13,
-          color: '#4a5568',
-          lineHeight: 1.7,
-        }}
-      >
-        {textContent}
-      </pre>
-    )
+    // 检测是否为 markdown 格式
+    const isMarkdown = detectMarkdown(textContent)
+
+    if (isMarkdown) {
+      // 使用 markdown 渲染
+      return (
+        <div
+          className="markdown-content"
+          dangerouslySetInnerHTML={{ __html: marked.parse(textContent || '') }}
+        />
+      )
+    } else {
+      // 使用纯文本渲染
+      return (
+        <pre
+          style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            margin: 0,
+            fontFamily: 'inherit',
+            fontSize: 13,
+            color: '#4a5568',
+            lineHeight: 1.7,
+          }}
+        >
+          {textContent}
+        </pre>
+      )
+    }
+  }
+
+  // 检测文本是否为 markdown 格式
+  const detectMarkdown = (text) => {
+    if (!text || typeof text !== 'string') return false
+
+    // Markdown 特征：标题、列表、代码块、粗体、链接等
+    const markdownPatterns = [
+      /^#{1,6}\s/m,           // 标题 (# ## ###)
+      /^\s*[-*+]\s/m,         // 无序列表
+      /^\s*\d+\.\s/m,         // 有序列表
+      /```[\s\S]*```/,        // 代码块
+      /`[^`]+`/,              // 行内代码
+      /\*\*[^*]+\*\*/,        // 粗体
+      /\*[^*]+\*/,            // 斜体
+      /\[.+\]\(.+\)/,         // 链接
+      /^\s*>/m,               // 引用
+      /\|.+\|/,               // 表格
+    ]
+
+    // 如果匹配到任意一个 markdown 特征，则认为是 markdown
+    return markdownPatterns.some(pattern => pattern.test(text))
   }
 
   const getMessageBorderColor = (type) => {
