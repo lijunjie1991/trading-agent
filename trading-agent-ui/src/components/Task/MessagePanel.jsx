@@ -38,99 +38,300 @@ const MessagePanel = ({ messages }) => {
     prevMessageCountRef.current = messages.length
   }, [messages])
 
-
   const renderMessageContent = (message) => {
-    // Database returns messageType and content
-    const { messageType, content } = message
+    const { content } = message
 
-    // 将 content 转换为文本字符串
-    let textContent = ''
+    let stringContent = ''
+    let jsonCandidate = null
 
-    if (typeof content === 'string') {
-      textContent = normalizeMultilineContent(content)
-    } else if (typeof content === 'object' && content !== null) {
-      // 如果是对象，尝试提取有意义的文本内容
-      if (content.content) {
-        textContent = normalizeMultilineContent(content.content)
-      } else if (content.text) {
-        textContent = normalizeMultilineContent(content.text)
+    if (typeof content === 'object' && content !== null) {
+      if (typeof content.content === 'string') {
+        stringContent = normalizeMultilineContent(content.content)
+      } else if (typeof content.text === 'string') {
+        stringContent = normalizeMultilineContent(content.text)
+      } else if (content.content && typeof content.content === 'object') {
+        jsonCandidate = content.content
+        stringContent = normalizeMultilineContent(JSON.stringify(content.content, null, 2))
       } else {
-        // 否则显示 JSON 字符串
-        textContent = normalizeMultilineContent(JSON.stringify(content, null, 2))
+        jsonCandidate = content
+        stringContent = normalizeMultilineContent(JSON.stringify(content, null, 2))
       }
+    } else if (typeof content === 'string') {
+      stringContent = normalizeMultilineContent(content)
     } else {
-      textContent = normalizeMultilineContent(String(content || ''))
+      stringContent = normalizeMultilineContent(String(content || ''))
     }
 
-    // 检测是否为 markdown 格式
-    const isMarkdown = detectMarkdown(textContent)
+    if (!jsonCandidate) {
+      jsonCandidate = tryParseJsonString(stringContent)
+    }
+
+    if (jsonCandidate) {
+      return renderJsonContent(jsonCandidate)
+    }
+
+    const tableSection = extractTabularSection(stringContent)
+    if (tableSection) {
+      return renderCsvSection(tableSection)
+    }
+
+    const isMarkdown = detectMarkdown(stringContent)
 
     if (isMarkdown) {
-      // 使用 markdown 渲染
       return (
         <div
           className="markdown-content"
-          dangerouslySetInnerHTML={{ __html: marked.parse(textContent || '') }}
+          dangerouslySetInnerHTML={{ __html: marked.parse(stringContent || '') }}
         />
       )
-    } else {
-      // 使用纯文本渲染
-      return (
-        <pre
-          style={{
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            margin: 0,
-            fontFamily: 'inherit',
-            fontSize: 13,
-            color: '#4a5568',
-            lineHeight: 1.7,
-          }}
-        >
-          {textContent}
-        </pre>
-      )
     }
+
+    return (
+      <pre
+        style={{
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          margin: 0,
+          fontFamily: 'inherit',
+          fontSize: 13,
+          color: '#4a5568',
+          lineHeight: 1.7,
+        }}
+      >
+        {stringContent}
+      </pre>
+    )
   }
 
-  // 检测文本是否为 markdown 格式
+  const renderJsonContent = (data) => {
+    if (Array.isArray(data) && data.length > 0 && data.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
+      const headers = Array.from(new Set(data.flatMap((item) => Object.keys(item))))
+      const rows = data.map((item) => headers.map((key) => formatTableCell(item[key])))
+      return renderTable(headers, rows)
+    }
+
+    return (
+      <pre className="json-content">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    )
+  }
+
+  const renderCsvSection = ({ headers, rows, before, after }) => (
+    <div>
+      {before && before.trim() && (
+        <div
+          className="markdown-content"
+          dangerouslySetInnerHTML={{ __html: marked.parse(before) }}
+        />
+      )}
+      {renderTable(headers, rows)}
+      {after && after.trim() && (
+        <div
+          className="markdown-content"
+          dangerouslySetInnerHTML={{ __html: marked.parse(after) }}
+        />
+      )}
+    </div>
+  )
+
+  const renderTable = (headers, rows) => (
+    <div className="csv-table-wrapper">
+      <table className="csv-table">
+        <thead>
+          <tr>
+            {headers.map((header, index) => (
+              <th key={`${header}-${index}`}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => (
+                <td key={`${rowIndex}-${cellIndex}`}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
   const detectMarkdown = (text) => {
     if (!text || typeof text !== 'string') return false
 
-    // Markdown 特征：标题、列表、代码块、粗体、链接等
     const markdownPatterns = [
-      /^#{1,6}\s/m,           // 标题 (# ## ###)
-      /^\s*[-*+]\s/m,         // 无序列表
-      /^\s*\d+\.\s/m,         // 有序列表
-      /```[\s\S]*```/,        // 代码块
-      /`[^`]+`/,              // 行内代码
-      /\*\*[^*]+\*\*/,        // 粗体
-      /\*[^*]+\*/,            // 斜体
-      /\[.+\]\(.+\)/,         // 链接
-      /^\s*>/m,               // 引用
-      /\|.+\|/,               // 表格
+      /^#{1,6}\s/m,
+      /^\s*[-*+]\s/m,
+      /^\s*\d+\.\s/m,
+      /```[\s\S]*```/,
+      /`[^`]+`/,
+      /\*\*[^*]+\*\*/,
+      /\*[^*]+\*/,
+      /\[.+\]\(.+\)/,
+      /^\s*>/m,
+      /\|.+\|/,
     ]
 
-    // 如果匹配到任意一个 markdown 特征，则认为是 markdown
-    return markdownPatterns.some(pattern => pattern.test(text))
+    return markdownPatterns.some((pattern) => pattern.test(text))
+  }
+
+  const tryParseJsonString = (value) => {
+    if (typeof value !== 'string') return null
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    if (!['{', '['].includes(trimmed[0])) return null
+
+    try {
+      const parsed = JSON.parse(trimmed)
+      return typeof parsed === 'object' && parsed !== null ? parsed : null
+    } catch (error) {
+      return null
+    }
+  }
+
+  const extractTabularSection = (text) => {
+    if (!text || typeof text !== 'string') return null
+
+    const lines = text.split('\n')
+    let currentBlock = []
+    let startIndex = -1
+
+    const flushBlock = (endIndex) => {
+      if (currentBlock.length === 0) return null
+
+      const blockLines = currentBlock.slice()
+      currentBlock = []
+
+      const hasComma = blockLines.every(isCommaSeparatedLine)
+      const hasColon = !hasComma && blockLines.every(isColonSeparatedLine)
+
+      if (!hasComma && !hasColon) return null
+      if (hasColon && blockLines.length < 3) return null
+
+      const { headers, rows } = hasComma
+        ? parseCommaSeparatedBlock(blockLines)
+        : parseColonSeparatedBlock(blockLines)
+
+      if (!rows.length) return null
+
+      const before = lines.slice(0, startIndex).join('\n').trim()
+      const after = lines.slice(endIndex).join('\n').trim()
+
+      return { headers, rows, before, after }
+    }
+
+    for (let index = 0; index <= lines.length; index += 1) {
+      const line = lines[index] ?? ''
+      const trimmed = line.trim()
+
+      if (isPotentialTableLine(trimmed)) {
+        if (currentBlock.length === 0) {
+          startIndex = index
+        }
+        currentBlock.push(trimmed)
+      } else if (currentBlock.length > 0) {
+        const blockResult = flushBlock(index)
+        if (blockResult) {
+          return blockResult
+        }
+        startIndex = -1
+      }
+    }
+
+    return null
+  }
+
+  const isPotentialTableLine = (line) => {
+    if (!line) return false
+    if (/^#{1,6}\s/.test(line)) return false
+    if (/^\s*[-*+]\s/.test(line)) return false
+    if (line.startsWith('```')) return false
+    return isCommaSeparatedLine(line) || isColonSeparatedLine(line)
+  }
+
+  const isCommaSeparatedLine = (line) => {
+    if (!line.includes(',')) return false
+    const cells = line.split(',').map((cell) => cell.trim())
+    return cells.filter(Boolean).length >= 2
+  }
+
+  const isColonSeparatedLine = (line) => {
+    if (!line.includes(':')) return false
+    if (/^https?:\/\//i.test(line)) return false
+    const [first, ...rest] = line.split(':')
+    const key = first.trim()
+    const value = rest.join(':').trim()
+    if (!key || !value) return false
+    if (key.length > 50) return false
+    return /^[\w\-()/\s.]+$/.test(key)
+  }
+
+  const parseCommaSeparatedBlock = (blockLines) => {
+    const rows = blockLines.map((line) => line.split(',').map((cell) => cell.trim()))
+    const columnCount = Math.max(...rows.map((row) => row.length))
+
+    const alignedRows = rows.map((row) => {
+      if (row.length === columnCount) return row
+      return [...row, ...new Array(columnCount - row.length).fill('')]
+    })
+
+    const headerCandidate = alignedRows[0]
+    const headerIsTextual = headerCandidate.some((cell) => /[A-Za-z]/.test(cell))
+
+    const headers = headerIsTextual
+      ? headerCandidate.map((cell, index) => formatTableCell(cell) || `Column ${index + 1}`)
+      : headerCandidate.map((_, index) => `Column ${index + 1}`)
+
+    const dataRows = headerIsTextual ? alignedRows.slice(1) : alignedRows
+
+    return {
+      headers,
+      rows: dataRows.map((row) => row.map((cell) => formatTableCell(cell))),
+    }
+  }
+
+  const parseColonSeparatedBlock = (blockLines) => {
+    const rows = blockLines
+      .map((line) => {
+        const [first, ...rest] = line.split(':')
+        if (!rest.length) return null
+        const key = first.trim()
+        const value = rest.join(':').trim()
+        return [formatTableCell(key), formatTableCell(value)]
+      })
+      .filter(Boolean)
+
+    return {
+      headers: ['Label', 'Value'],
+      rows,
+    }
+  }
+
+  const formatTableCell = (value) => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'number' && Number.isFinite(value)) return value.toString()
+    if (typeof value === 'string') return value
+    return JSON.stringify(value)
   }
 
   const getMessageBorderColor = (type) => {
     const colors = {
-      System: '#4299e1',      // 蓝色 - 系统消息
-      Reasoning: '#48bb78',   // 绿色 - 推理消息
-      tool_call: '#ed8936',   // 橙色 - 工具调用
-      Analysis: '#9f7aea',    // 紫色 - 分析消息
+      System: '#4299e1',
+      Reasoning: '#48bb78',
+      tool_call: '#ed8936',
+      Analysis: '#9f7aea',
     }
     return colors[type] || '#cbd5e0'
   }
 
   const getMessageBackground = (type) => {
     const backgrounds = {
-      System: '#ebf8ff',      // 浅蓝色背景
-      Reasoning: '#f0fff4',   // 浅绿色背景
-      tool_call: '#fffaf0',   // 浅橙色背景
-      Analysis: '#faf5ff',    // 浅紫色背景
+      System: '#ebf8ff',
+      Reasoning: '#f0fff4',
+      tool_call: '#fffaf0',
+      Analysis: '#faf5ff',
     }
     return backgrounds[type] || '#f7fafc'
   }
@@ -138,11 +339,21 @@ const MessagePanel = ({ messages }) => {
   const normalizeMultilineContent = (value) => {
     if (typeof value !== 'string') return value
 
-    return value
+    let normalized = value
       .replace(/\r\n/g, '\n')
       .replace(/\\r\\n/g, '\n')
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
+
+    const trimmed = normalized.trim()
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      normalized = trimmed.slice(1, -1)
+    }
+
+    return normalized
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'")
+      .replace(/\\\\/g, '\\')
   }
 
   return (
@@ -172,7 +383,7 @@ const MessagePanel = ({ messages }) => {
           <Empty description="No messages yet" style={{ marginTop: 50 }} />
         ) : (
           <Space direction="vertical" size={12} style={{ width: '100%' }}>
-            {messages.map((message, index) => {
+            {messages.map((message) => {
               const messageId = message.id || `${message.createdAt}-${message.messageType}`
               const isNewMessage = newMessageIds.has(messageId)
 
@@ -188,25 +399,25 @@ const MessagePanel = ({ messages }) => {
                     boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                   }}
                 >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 10,
-                  }}
-                >
-                  <Text strong style={{ fontSize: 13 }}>
-                    {getMessageTypeIcon(message.messageType)} {getMessageTypeLabel(message.messageType)}
-                  </Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {formatTime(message.createdAt)}
-                  </Text>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: 10,
+                    }}
+                  >
+                    <Text strong style={{ fontSize: 13 }}>
+                      {getMessageTypeIcon(message.messageType)} {getMessageTypeLabel(message.messageType)}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {formatTime(message.createdAt)}
+                    </Text>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
+                    {renderMessageContent(message)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
-                  {renderMessageContent(message)}
-                </div>
-              </div>
               )
             })}
           </Space>
