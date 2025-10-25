@@ -19,9 +19,6 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
   const cardRef = useRef(null)
   const prevStatusRef = useRef(task?.status)
 
-  // Debug logging
-  console.log('CompactHeader - props:', { task, finalDecision, isProcessing })
-
   // Detect when task transitions to COMPLETED
   useEffect(() => {
     if (prevStatusRef.current === 'RUNNING' && task?.status === 'COMPLETED') {

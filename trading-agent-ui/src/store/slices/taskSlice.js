@@ -262,16 +262,10 @@ const taskSlice = createSlice({
 
       // 从 task 对象中提取 finalDecision 字段
       const task = action.payload
-      console.log('fetchTask.fulfilled - task:', task)
-      console.log('fetchTask.fulfilled - finalDecision from task:', task?.finalDecision)
-
       if (task) {
         const decision = task.finalDecision || task.final_decision || task.decision
-        console.log('fetchTask.fulfilled - extracted decision:', decision)
-
         if (decision) {
           state.finalDecision = decision
-          console.log('fetchTask.fulfilled - set state.finalDecision to:', decision)
         }
       }
 
