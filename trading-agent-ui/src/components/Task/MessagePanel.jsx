@@ -172,13 +172,15 @@ const MessagePanel = ({ messages }) => {
       }
     }
 
-    const tableSection = extractTabularSection(stringContent)
-    if (tableSection) {
-      return {
-        node: renderCsvSection(tableSection),
-        lengthHint,
-      }
-    }
+    // 禁用自动表格检测，让 Markdown 自然渲染
+    // 如果需要表格，LLM 会生成标准的 Markdown 表格格式
+    // const tableSection = extractTabularSection(stringContent)
+    // if (tableSection) {
+    //   return {
+    //     node: renderCsvSection(tableSection),
+    //     lengthHint,
+    //   }
+    // }
 
     return {
       node: (
