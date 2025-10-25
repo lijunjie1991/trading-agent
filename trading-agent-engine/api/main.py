@@ -802,11 +802,6 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
             "Analysis", f"Completed analysis for {request.analysis_date}"
         )
 
-        # Update final report sections
-        for section in message_buffer.report_sections.keys():
-            if section in final_state:
-                message_buffer.update_report_section(section, final_state[section])
-
         print(f"✅ Analysis completed, processed {len(trace)} chunks")
 
         # Update task status to completed
