@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card, Typography, Empty, Space, Tag } from 'antd'
-import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
-import ToolResultRenderer from './ToolResultRenderer'
 import './ProcessingIndicator.css'
 
 const { Title, Text } = Typography
@@ -34,166 +32,64 @@ const MessagePanel = ({ messages }) => {
     prevMessageCountRef.current = messages.length
   }, [messages])
 
-  const getMessageIcon = (message) => {
-    const { messageType, content } = message
-
-    // For 'message' type, check the role to determine the icon
-    if (messageType === 'message' && content && content.role) {
-      if (content.role === 'user') {
-        return '👤' // User icon
-      }
-      if (content.role === 'assistant') {
-        return '🤖' // AI/Bot icon for reasoning
-      }
-    }
-
-    // Default to the helper function
-    return getMessageTypeIcon(messageType)
-  }
-
-  const getMessageLabel = (message) => {
-    const { messageType, content } = message
-
-    // For 'message' type, check the role to determine the label
-    if (messageType === 'message' && content && content.role) {
-      if (content.role === 'user') {
-        return 'USER INPUT'
-      }
-      if (content.role === 'assistant') {
-        return 'REASONING'
-      }
-    }
-
-    // Default to the helper function
-    return getMessageTypeLabel(messageType)
-  }
 
   const renderMessageContent = (message) => {
     // Database returns messageType and content
     const { messageType, content } = message
-    const type = messageType
-    const data = content
 
-    if (type === 'status') {
-      return (
-        <div>
-          <Text strong>Status: </Text>
-          <Tag color={data.status === 'completed' ? 'success' : data.status === 'failed' ? 'error' : 'processing'}>
-            {data.status}
-          </Tag>
-          <br />
-          {data.message && (
-            <>
-              <Text strong>Message: </Text>
-              <Text>{data.message}</Text>
-              <br />
-            </>
-          )}
-          {data.decision && (
-            <>
-              <Text strong>Decision: </Text>
-              <Tag
-                color={
-                  data.decision.toLowerCase().includes('buy')
-                    ? 'success'
-                    : data.decision.toLowerCase().includes('sell')
-                    ? 'error'
-                    : 'warning'
-                }
-                style={{ fontSize: 13, fontWeight: 600 }}
-              >
-                {data.decision}
-              </Tag>
-            </>
-          )}
-          {data.error && (
-            <>
-              <Text strong type="danger">
-                Error:{' '}
-              </Text>
-              <Text type="danger">{data.error}</Text>
-            </>
-          )}
-        </div>
-      )
+    // 简单的纯文本显示方式
+    // 将 content 转换为纯文本字符串
+    let textContent = ''
+
+    if (typeof content === 'string') {
+      textContent = content
+    } else if (typeof content === 'object' && content !== null) {
+      // 如果是对象，尝试提取有意义的文本内容
+      if (content.content) {
+        textContent = content.content
+      } else if (content.text) {
+        textContent = content.text
+      } else {
+        // 否则显示 JSON 字符串
+        textContent = JSON.stringify(content, null, 2)
+      }
+    } else {
+      textContent = String(content || '')
     }
 
-    if (type === 'message') {
-      return (
-        <div
-          className="markdown-content"
-          dangerouslySetInnerHTML={{ __html: marked.parse(data.content || '') }}
-        />
-      )
-    }
-
-    if (type === 'tool_call') {
-      return (
-        <div>
-          <Text strong>Tool: </Text>
-          <Tag color="blue">{data.tool_name}</Tag>
-          <br />
-          <Text strong style={{ marginTop: 8, display: 'block' }}>
-            Arguments:
-          </Text>
-          <pre
-            style={{
-              background: '#2d3748',
-              color: '#e2e8f0',
-              padding: 10,
-              borderRadius: 6,
-              overflow: 'auto',
-              fontSize: 11,
-              marginTop: 8,
-            }}
-          >
-            {JSON.stringify(data.args, null, 2)}
-          </pre>
-        </div>
-      )
-    }
-
-    if (type === 'report') {
-      return (
-        <div>
-          <Text strong>Report Type: </Text>
-          <Tag color="purple">{data.report_type}</Tag>
-          <div
-            className="markdown-content"
-            style={{ marginTop: 12 }}
-            dangerouslySetInnerHTML={{ __html: marked.parse(data.content || '') }}
-          />
-        </div>
-      )
-    }
-
-    if (type === 'tool_result') {
-      return <ToolResultRenderer data={data} />
-    }
-
-    return <Text>{JSON.stringify(data)}</Text>
+    return (
+      <pre
+        style={{
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          margin: 0,
+          fontFamily: 'inherit',
+          fontSize: 13,
+          color: '#4a5568',
+          lineHeight: 1.7,
+        }}
+      >
+        {textContent}
+      </pre>
+    )
   }
 
   const getMessageBorderColor = (type) => {
     const colors = {
-      status: '#4299e1',
-      message: '#48bb78',
-      tool_call: '#ed8936',
-      tool_result: '#38b2ac',
-      report: '#9f7aea',
-      agent_status: '#a0aec0',
+      System: '#4299e1',      // 蓝色 - 系统消息
+      Reasoning: '#48bb78',   // 绿色 - 推理消息
+      tool_call: '#ed8936',   // 橙色 - 工具调用
+      Analysis: '#9f7aea',    // 紫色 - 分析消息
     }
     return colors[type] || '#cbd5e0'
   }
 
   const getMessageBackground = (type) => {
     const backgrounds = {
-      status: '#ebf8ff',
-      message: '#f0fff4',
-      tool_call: '#fffaf0',
-      tool_result: '#e6fffa',
-      report: '#faf5ff',
-      agent_status: '#f7fafc',
+      System: '#ebf8ff',      // 浅蓝色背景
+      Reasoning: '#f0fff4',   // 浅绿色背景
+      tool_call: '#fffaf0',   // 浅橙色背景
+      Analysis: '#faf5ff',    // 浅紫色背景
     }
     return backgrounds[type] || '#f7fafc'
   }
@@ -250,7 +146,7 @@ const MessagePanel = ({ messages }) => {
                   }}
                 >
                   <Text strong style={{ fontSize: 13 }}>
-                    {getMessageIcon(message)} {getMessageLabel(message)}
+                    {getMessageTypeIcon(message.messageType)} {getMessageTypeLabel(message.messageType)}
                   </Text>
                   <Text type="secondary" style={{ fontSize: 11 }}>
                     {formatTime(message.createdAt)}

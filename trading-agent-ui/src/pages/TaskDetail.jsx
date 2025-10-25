@@ -11,13 +11,10 @@ import Loading from '../components/Common/Loading'
 import api from '../services/api'
 import {
   updateStats,
-  updateCurrentReport,
-  updateFinalDecision,
   resetTaskState,
   fetchTask,
   fetchTaskMessages,
 } from '../store/slices/taskSlice'
-import { WS_MESSAGE_TYPES } from '../utils/constants'
 import './TaskDetail.css'
 
 const { Title, Text } = Typography
@@ -39,7 +36,6 @@ const TaskDetail = () => {
     currentTask,
     messages,
     stats,
-    currentReport,
     finalDecision,
     loading,
     lastTimestamp,
@@ -86,14 +82,6 @@ const TaskDetail = () => {
   }, [currentTask?.status])
 
   useEffect(() => {
-    if (messages.length === 0) return
-
-    messages.slice(0, 10).forEach((msg) => {
-      handleMessage(msg)
-    })
-  }, [messages.length])
-
-  useEffect(() => {
     if (currentTask) {
       dispatch(
         updateStats({
@@ -104,25 +92,6 @@ const TaskDetail = () => {
       )
     }
   }, [currentTask, dispatch])
-
-  const handleMessage = (msg) => {
-    const { messageType, content } = msg
-
-    switch (messageType) {
-      case WS_MESSAGE_TYPES.STATUS:
-        if (content.decision) {
-          dispatch(updateFinalDecision(content.decision))
-        }
-        break
-
-      case WS_MESSAGE_TYPES.REPORT:
-        dispatch(updateCurrentReport(content))
-        break
-
-      default:
-        break
-    }
-  }
 
   // Fetch all reports when user clicks the button
   const handleViewReports = async () => {

@@ -22,15 +22,6 @@ export const API_ENDPOINTS = {
   WS_ANALYSIS: '/ws/analysis/:taskId',
 }
 
-// WebSocket Message Types
-export const WS_MESSAGE_TYPES = {
-  STATUS: 'status',
-  MESSAGE: 'message',
-  TOOL_CALL: 'tool_call',
-  REPORT: 'report',
-  AGENT_STATUS: 'agent_status',
-}
-
 // Task Status
 export const TASK_STATUS = {
   PENDING: 'pending',

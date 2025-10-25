@@ -219,12 +219,10 @@ export const safeJsonParse = (str, defaultValue = null) => {
  */
 export const getMessageTypeIcon = (type) => {
   const icons = {
-    status: '📊',
-    message: '💬',
+    System: '📊',
+    Reasoning: '🧠',
     tool_call: '🔧',
-    tool_result: '✅',
-    report: '📄',
-    agent_status: '👤',
+    Analysis: '📈',
   }
   return icons[type] || '📝'
 }
@@ -235,12 +233,10 @@ export const getMessageTypeIcon = (type) => {
 export const getMessageTypeLabel = (type) => {
   if (!type) return 'UNKNOWN'
   const labels = {
-    status: 'STATUS',
-    message: 'REASONING',
+    System: 'SYSTEM',
+    Reasoning: 'REASONING',
     tool_call: 'TOOL CALL',
-    tool_result: 'TOOL RESULT',
-    report: 'REPORT',
-    agent_status: 'AGENT STATUS',
+    Analysis: 'ANALYSIS',
   }
   return labels[type] || type.toUpperCase()
 }

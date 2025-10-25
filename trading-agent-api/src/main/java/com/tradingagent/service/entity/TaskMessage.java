@@ -30,9 +30,8 @@ public class TaskMessage {
     @Column(name = "message_type", length = 20, nullable = false)
     private String messageType;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "content", columnDefinition = "json", nullable = false)
-    private Map<String, Object> content;
+    @Column(name = "content")
+    private String content;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)

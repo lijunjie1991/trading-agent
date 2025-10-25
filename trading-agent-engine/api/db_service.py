@@ -137,7 +137,7 @@ def get_task_by_uuid(task_id: str):
         db.close()
 
 
-def save_task_message(task_id: str, message_type: str, content: Dict[Any, Any]):
+def save_task_message(task_id: str, message_type: str, content: str):
     """
     SaveTaskmessage to database
 
