@@ -179,13 +179,14 @@ const MessagePanel = ({
       }
     }
 
-    const tableSection = extractTabularSection(stringContent)
-    if (tableSection) {
-      return {
-        node: renderCsvSection(tableSection),
-        lengthHint,
-      }
-    }
+    // CSV/键值表格检测暂时关闭，避免 Markdown 内容被误识别
+    // const tableSection = extractTabularSection(stringContent)
+    // if (tableSection) {
+    //   return {
+    //     node: renderCsvSection(tableSection),
+    //     lengthHint,
+    //   }
+    // }
 
     return {
       node: (
