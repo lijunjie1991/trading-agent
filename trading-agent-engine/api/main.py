@@ -835,16 +835,6 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
 
 # ==================== API Endpoints ====================
 
-@app.get("/", tags=["Health Check"])
-async def root():
-    """Root path - service information"""
-    return {
-        "service": "TradingAgents API",
-        "status": "running",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
-
 
 @app.get("/api/v1/health", tags=["Health Check"])
 async def health_check():
@@ -893,143 +883,13 @@ async def start_analysis(request: AnalysisRequest):
         created_at=datetime.now().isoformat()
     )
 
-
-@app.get("/api/v1/analysis/{task_id}", response_model=TaskDetailResponse, tags=["Analysis"])
-async def get_task_detail(task_id: str):
-    """
-    Get task details (read from database).
-
-    Args:
-        task_id: Unique task identifier
-
-    Returns:
-        Task details including status, configuration, and results
-
-    Raises:
-        HTTPException: If task not found
-    """
-    from db_service import get_task_by_uuid
-
-    task = get_task_by_uuid(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    # Parse JSON fields
-    selected_analysts = json.loads(task.selected_analysts) if task.selected_analysts else []
-
-    return TaskDetailResponse(
-        task_id=task.task_id,
-        status=task.status,
-        ticker=task.ticker,
-        analysis_date=task.analysis_date.strftime("%Y-%m-%d"),
-        selected_analysts=selected_analysts,
-        research_depth=task.research_depth,
-        final_decision=task.final_decision,
-        created_at=task.created_at.isoformat(),
-        completed_at=task.completed_at.isoformat() if task.completed_at else None,
-        error_message=task.error_message
-    )
-
-
-@app.get("/api/v1/analysis/{task_id}/reports", tags=["Analysis"])
-async def get_task_reports(task_id: str):
-    """
-    Get task reports (read from database).
-
-    Args:
-        task_id: Unique task identifier
-
-    Returns:
-        Dictionary containing all generated reports
-
-    Raises:
-        HTTPException: If task not found
-    """
-    from db_service import get_task_by_uuid
-    from database import get_db_session, Report
-
-    task = get_task_by_uuid(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    # Get all reports for this task
-    db = get_db_session()
-    try:
-        reports = db.query(Report).filter(Report.task_id == task.id).all()
-        reports_dict = {report.report_type: report.content for report in reports}
-
-        return {
-            "task_id": task_id,
-            "status": task.status,
-            "reports": reports_dict
-        }
-    finally:
-        db.close()
-
-
-@app.get("/api/v1/tasks", tags=["Analysis"])
-async def list_tasks(status: Optional[TaskStatus] = None, limit: int = DEFAULT_TASK_LIMIT):
-    """
-    List all tasks (read from database).
-
-    Note: This endpoint returns Python internal data.
-    Java side should use its own API for task listing.
-
-    Args:
-        status: Optional status filter
-        limit: Maximum number of tasks to return
-
-    Returns:
-        List of tasks with details
-    """
-    from database import get_db_session, Task
-
-    db = get_db_session()
-    try:
-        query = db.query(Task)
-
-        # Apply status filter if provided
-        if status:
-            query = query.filter(Task.status == status.value.upper())
-
-        # Order by creation time descending and apply limit
-        query = query.order_by(Task.created_at.desc()).limit(limit)
-        tasks = query.all()
-
-        # Format task list
-        task_list = []
-        for task in tasks:
-            selected_analysts = json.loads(task.selected_analysts) if task.selected_analysts else []
-            task_list.append({
-                "task_id": task.task_id,
-                "status": task.status,
-                "ticker": task.ticker,
-                "analysis_date": task.analysis_date.strftime("%Y-%m-%d"),
-                "selected_analysts": selected_analysts,
-                "research_depth": task.research_depth,
-                "final_decision": task.final_decision,
-                "created_at": task.created_at.isoformat(),
-                "completed_at": task.completed_at.isoformat() if task.completed_at else None,
-                "error_message": task.error_message
-            })
-
-        return {
-            "total": len(task_list),
-            "tasks": task_list
-        }
-    finally:
-        db.close()
-
-# ==================== Startup configuration ====================
-
 if __name__ == "__main__":
     import uvicorn
 
     print("""
     ╔═══════════════════════════════════════════════════════════╗
-    ║         TradingAgents FastAPI Service                     ║
     ║                                                           ║
-    ║         http://localhost:8000/docs                        ║
+    ║          Running on: http://localhost:8000/               ║
     ║                                                           ║
     ╚═══════════════════════════════════════════════════════════╝
     """)
