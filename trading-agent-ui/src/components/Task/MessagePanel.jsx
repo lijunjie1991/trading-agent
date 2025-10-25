@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Card, Typography, Empty, Space, Tag, Button } from 'antd'
 import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
@@ -61,15 +61,64 @@ const MessagePanel = ({ messages }) => {
     })
   }, [messages])
 
-  useEffect(() => {
+  const measureOverflow = useCallback(() => {
     const nextOverflow = new Set()
     Object.entries(contentRefs.current).forEach(([id, element]) => {
       if (element && element.scrollHeight > COLLAPSED_HEIGHT + 16) {
         nextOverflow.add(id)
       }
     })
-    setOverflowingIds(nextOverflow)
-  }, [messages, expandedIds])
+
+    setOverflowingIds((prev) => {
+      if (prev.size === nextOverflow.size) {
+        let allMatch = true
+        prev.forEach((value) => {
+          if (!nextOverflow.has(value)) {
+            allMatch = false
+          }
+        })
+        if (allMatch) {
+          nextOverflow.forEach((value) => {
+            if (!prev.has(value)) {
+              allMatch = false
+            }
+          })
+        }
+        if (allMatch) {
+          return prev
+        }
+      }
+      return nextOverflow
+    })
+  }, [])
+
+  useEffect(() => {
+    if (typeof requestAnimationFrame === 'function') {
+      const frame = requestAnimationFrame(() => measureOverflow())
+      return () => cancelAnimationFrame(frame)
+    }
+
+    const timeout = setTimeout(() => measureOverflow(), 0)
+    return () => clearTimeout(timeout)
+  }, [messages, measureOverflow])
+
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined
+    }
+
+    const observer = new ResizeObserver(() => {
+      measureOverflow()
+    })
+
+    Object.values(contentRefs.current).forEach((element) => {
+      if (element) {
+        observer.observe(element)
+      }
+    })
+
+    return () => observer.disconnect()
+  }, [messages, measureOverflow])
 
   const toggleExpand = (messageId) => {
     setExpandedIds((prev) => {
@@ -81,6 +130,12 @@ const MessagePanel = ({ messages }) => {
       }
       return next
     })
+
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => measureOverflow())
+    } else {
+      setTimeout(() => measureOverflow(), 0)
+    }
   }
 
   const renderMessageContent = (message) => {
