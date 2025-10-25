@@ -249,6 +249,11 @@
   transition: max-height 0.3s ease;
 }
 
+.message-content-inner {
+  position: relative;
+  width: 100%;
+}
+
 .message-content-gradient {
   position: absolute;
   left: 0;

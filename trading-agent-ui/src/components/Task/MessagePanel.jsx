@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { Card, Typography, Empty, Space, Tag, Button } from 'antd'
 import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
@@ -20,6 +20,7 @@ const MessagePanel = ({ messages }) => {
   const prevMessageCountRef = useRef(0)
 
   const COLLAPSED_HEIGHT = 260
+  const LONG_CONTENT_THRESHOLD = 480
 
   useEffect(() => {
     if (containerRef.current) {
@@ -64,7 +65,9 @@ const MessagePanel = ({ messages }) => {
   const measureOverflow = useCallback(() => {
     const nextOverflow = new Set()
     Object.entries(contentRefs.current).forEach(([id, element]) => {
-      if (element && element.scrollHeight > COLLAPSED_HEIGHT + 16) {
+      if (!element) return
+      const contentHeight = element.scrollHeight
+      if (contentHeight > COLLAPSED_HEIGHT + 4) {
         nextOverflow.add(id)
       }
     })
@@ -92,14 +95,8 @@ const MessagePanel = ({ messages }) => {
     })
   }, [])
 
-  useEffect(() => {
-    if (typeof requestAnimationFrame === 'function') {
-      const frame = requestAnimationFrame(() => measureOverflow())
-      return () => cancelAnimationFrame(frame)
-    }
-
-    const timeout = setTimeout(() => measureOverflow(), 0)
-    return () => clearTimeout(timeout)
+  useLayoutEffect(() => {
+    measureOverflow()
   }, [messages, measureOverflow])
 
   useEffect(() => {
@@ -138,7 +135,7 @@ const MessagePanel = ({ messages }) => {
     }
   }
 
-  const renderMessageContent = (message) => {
+  const buildMessageContent = (message) => {
     const { content } = message
 
     let stringContent = ''
@@ -166,41 +163,56 @@ const MessagePanel = ({ messages }) => {
       jsonCandidate = tryParseJsonString(stringContent)
     }
 
+    const lengthHint = stringContent.length
+
     if (jsonCandidate) {
-      return renderJsonContent(jsonCandidate)
+      return {
+        node: renderJsonContent(jsonCandidate),
+        lengthHint: JSON.stringify(jsonCandidate).length || lengthHint,
+      }
     }
 
     const tableSection = extractTabularSection(stringContent)
     if (tableSection) {
-      return renderCsvSection(tableSection)
+      return {
+        node: renderCsvSection(tableSection),
+        lengthHint,
+      }
     }
 
     const isMarkdown = detectMarkdown(stringContent)
 
     if (isMarkdown) {
-      return (
-        <div
-          className="markdown-content"
-          dangerouslySetInnerHTML={{ __html: marked.parse(stringContent || '') }}
-        />
-      )
+      return {
+        node: (
+          <div
+            className="markdown-content"
+            dangerouslySetInnerHTML={{ __html: marked.parse(stringContent || '') }}
+          />
+        ),
+        lengthHint,
+      }
     }
 
-    return (
-      <pre
-        style={{
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          margin: 0,
-          fontFamily: 'inherit',
-          fontSize: 13,
-          color: '#4a5568',
-          lineHeight: 1.7,
-        }}
-      >
-        {stringContent}
-      </pre>
-    )
+    return {
+      node: (
+        <pre
+          className="markdown-content"
+          style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            margin: 0,
+            fontFamily: 'inherit',
+            fontSize: 13,
+            color: '#4a5568',
+            lineHeight: 1.7,
+          }}
+        >
+          {stringContent}
+        </pre>
+      ),
+      lengthHint,
+    }
   }
 
   const renderJsonContent = (data) => {
@@ -488,6 +500,10 @@ const MessagePanel = ({ messages }) => {
               const isNewMessage = newMessageIds.has(messageId)
               const isExpanded = expandedIds.has(messageId)
               const isOverflowing = overflowingIds.has(messageId)
+              const { node: contentNode, lengthHint } = buildMessageContent(message)
+              const hasLongContent = isOverflowing || lengthHint > LONG_CONTENT_THRESHOLD
+              const showToggle = hasLongContent || isExpanded
+              const showGradient = !isExpanded && hasLongContent
 
               return (
                 <div
@@ -520,25 +536,29 @@ const MessagePanel = ({ messages }) => {
                     className={`message-content-wrapper ${isExpanded ? 'expanded' : 'collapsed'}`}
                   >
                     <div
-                      ref={(element) => {
-                        if (element) {
-                          contentRefs.current[messageId] = element
-                        } else {
-                          delete contentRefs.current[messageId]
-                        }
-                      }}
                       className="message-content-body"
                       style={{
                         maxHeight: isExpanded ? 'none' : COLLAPSED_HEIGHT,
                       }}
                     >
-                      <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
-                        {renderMessageContent(message)}
+                      <div
+                        ref={(element) => {
+                          if (element) {
+                            contentRefs.current[messageId] = element
+                          } else {
+                            delete contentRefs.current[messageId]
+                          }
+                        }}
+                        className="message-content-inner"
+                      >
+                        <div style={{ fontSize: 13, color: '#4a5568', lineHeight: 1.7 }}>
+                          {contentNode}
+                        </div>
                       </div>
                     </div>
-                    {!isExpanded && isOverflowing && <div className="message-content-gradient" />}
+                    {showGradient && <div className="message-content-gradient" />}
                   </div>
-                  {isOverflowing && (
+                  {showToggle && (
                     <Button
                       type="link"
                       size="small"
