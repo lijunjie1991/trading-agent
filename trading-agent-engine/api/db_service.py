@@ -73,6 +73,9 @@ def save_report(task_id: str, report_type: str, content: str):
         task_id: Task UUID
         report_type: Report type
         content: Report content
+
+    Returns:
+        bool: True if new report was created, False if existing report was updated
     """
     db = get_db_session()
     try:
@@ -88,6 +91,7 @@ def save_report(task_id: str, report_type: str, content: str):
             Report.report_type == report_type
         ).first()
 
+        was_new_report = False
         if existing_report:
             # Update existing report (matches file overwrite "w" mode)
             existing_report.content = content
@@ -102,9 +106,10 @@ def save_report(task_id: str, report_type: str, content: str):
             )
             db.add(report)
             print(f"✅ Created report '{report_type}' for task {task_id[:8]}")
+            was_new_report = True
 
         db.commit()
-        return True
+        return was_new_report
 
     except Exception as e:
         db.rollback()

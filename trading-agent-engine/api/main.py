@@ -226,9 +226,6 @@ class MessageBuffer:
             args: Tool arguments
         """
         try:
-            # Increment tool call counter
-            increment_task_stats(self.task_id, tool_calls=1)
-
             # Save to database task_messages table
             save_task_message(self.task_id, "tool_call", {
                 "tool_name": tool_name,
@@ -251,14 +248,6 @@ class MessageBuffer:
             self.agent_status[agent] = status
             self.current_agent = agent
 
-            # Save status update to database
-            try:
-                save_task_message(self.task_id, "agent_status", {
-                    "agent": agent,
-                    "status": status
-                })
-            except Exception as e:
-                print(f"⚠️ Failed to save agent status to database {self.task_id[:8]}: {e}")
 
     def update_report_section(self, section_name: str, content: str):
         """
@@ -304,112 +293,6 @@ def extract_content_string(content):
         return str(content)
 
 
-def extract_message_content(message) -> Optional[str]:
-    """
-    Extract text content from various message formats.
-
-    Args:
-        message: Message object from LangGraph
-
-    Returns:
-        Extracted text content or None
-    """
-    if not hasattr(message, "content"):
-        return None
-
-    content = message.content
-
-    # Handle list format (Anthropic)
-    if isinstance(content, list):
-        text_parts = []
-        for item in content:
-            if isinstance(item, dict) and item.get('type') == 'text':
-                text_parts.append(item.get('text', ''))
-        return ' '.join(text_parts) if text_parts else None
-
-    # Handle string format
-    if content:
-        return str(content).strip()
-
-    return None
-
-
-def generate_content_hash(content: str) -> str:
-    """
-    Generate a hash for content deduplication.
-
-    Args:
-        content: Content string to hash
-
-    Returns:
-        SHA256 hash of content
-    """
-    # Use only first MAX_CONTENT_HASH_LENGTH chars to avoid memory issues
-    content_to_hash = content[:MAX_CONTENT_HASH_LENGTH] if len(content) > MAX_CONTENT_HASH_LENGTH else content
-    return hashlib.sha256(content_to_hash.encode('utf-8')).hexdigest()
-
-
-def get_message_id(message) -> str:
-    """
-    Get or generate unique identifier for a message.
-
-    Args:
-        message: Message object from LangGraph
-
-    Returns:
-        Unique message identifier
-    """
-    # Use message id attribute if available
-    if hasattr(message, "id") and message.id:
-        return str(message.id)
-
-    # Generate hash-based ID from content
-    content = str(getattr(message, "content", ""))
-    tool_calls = str(getattr(message, "tool_calls", ""))
-    combined = content + tool_calls
-
-    return generate_content_hash(combined)
-
-
-def should_filter_content(content: str) -> bool:
-    """
-    Check if content should be filtered out.
-
-    Args:
-        content: Content string to check
-
-    Returns:
-        True if content should be filtered
-    """
-    if not content or len(content) <= MIN_CONTENT_LENGTH:
-        return True
-
-    content_lower = content.lower()
-    return any(skip in content_lower for skip in SYSTEM_MESSAGE_FILTERS)
-
-
-def get_message_type(message) -> str:
-    """
-    Get message type from LangGraph message object.
-
-    Args:
-        message: Message object from LangGraph
-
-    Returns:
-        Message type: "human", "ai", "tool", "system", or "unknown"
-    """
-    message_class = message.__class__.__name__
-    if "Human" in message_class:
-        return "human"
-    elif "AI" in message_class:
-        return "ai"
-    elif "Tool" in message_class:
-        return "tool"
-    elif "System" in message_class:
-        return "system"
-    return "unknown"
-
-
 def update_research_team_status(message_buffer: MessageBuffer, status: str):
     """
     Update status for all research team members and trader.
@@ -452,6 +335,62 @@ def create_save_report_decorator(task_id: str):
                     save_report(task_id, section_name, final_content)
         return wrapper
     return save_report_section_decorator
+
+
+def update_task_statistics(task_id: str):
+    """
+    Update task statistics in database.
+    Matches cli/main.py update_display() statistics calculation logic (lines 381-387).
+
+    This should be called periodically (e.g., after processing each chunk) to sync stats,
+    similar to how cli/main.py calls update_display() in the streaming loop.
+
+    Args:
+        task_id: Task UUID
+    """
+    from database import get_db_session, Task, TaskMessage, Report
+
+    db = get_db_session()
+    try:
+        # Get task by UUID
+        task = db.query(Task).filter(Task.task_id == task_id).first()
+        if not task:
+            return False
+
+        # Count tool calls
+        # Matches: tool_calls_count = len(message_buffer.tool_calls)
+        tool_calls_count = db.query(TaskMessage).filter(
+            TaskMessage.task_id == task.id,
+            TaskMessage.message_type == "tool_call"
+        ).count()
+
+        # Count LLM calls (messages with type "Reasoning")
+        # Matches: llm_calls_count = sum(1 for _, msg_type, _ in message_buffer.messages if msg_type == "Reasoning")
+        llm_calls_count = db.query(TaskMessage).filter(
+            TaskMessage.task_id == task.id,
+            TaskMessage.message_type == "Reasoning"
+        ).count()
+
+        # Count reports (non-null report sections)
+        # Matches: reports_count = sum(1 for content in message_buffer.report_sections.values() if content is not None)
+        reports_count = db.query(Report).filter(
+            Report.task_id == task.id
+        ).count()
+
+        # Update task statistics
+        task.tool_calls = tool_calls_count
+        task.llm_calls = llm_calls_count
+        task.reports_count = reports_count
+
+        db.commit()
+        return True
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error updating task statistics for {task_id[:8]}: {e}")
+        return False
+    finally:
+        db.close()
 
 
 # ==================== Background Task Processing ====================
@@ -807,6 +746,10 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
                         message_buffer.update_agent_status(
                             "Portfolio Manager", "completed"
                         )
+
+                # Update task statistics after processing each chunk
+                # Matches cli/main.py update_display() call in streaming loop (line 233)
+                update_task_statistics(task_id)
 
             trace.append(chunk)
 
