@@ -270,6 +270,12 @@ class MessageBuffer:
             content: Report content
         """
         if section_name in self.report_sections:
+            # Check if content has actually changed (deduplicate)
+            if self.report_sections[section_name] == content:
+                # Content unchanged, skip database save
+                return
+
+            # Update in-memory section
             self.report_sections[section_name] = content
 
             try:
