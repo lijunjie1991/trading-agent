@@ -6,6 +6,11 @@ import './ProcessingIndicator.css'
 
 const { Title, Text } = Typography
 
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+})
+
 const MessagePanel = ({ messages }) => {
   const containerRef = useRef(null)
   const [newMessageIds, setNewMessageIds] = useState(new Set())
@@ -42,19 +47,19 @@ const MessagePanel = ({ messages }) => {
     let textContent = ''
 
     if (typeof content === 'string') {
-      textContent = content
+      textContent = normalizeMultilineContent(content)
     } else if (typeof content === 'object' && content !== null) {
       // 如果是对象，尝试提取有意义的文本内容
       if (content.content) {
-        textContent = content.content
+        textContent = normalizeMultilineContent(content.content)
       } else if (content.text) {
-        textContent = content.text
+        textContent = normalizeMultilineContent(content.text)
       } else {
         // 否则显示 JSON 字符串
-        textContent = JSON.stringify(content, null, 2)
+        textContent = normalizeMultilineContent(JSON.stringify(content, null, 2))
       }
     } else {
-      textContent = String(content || '')
+      textContent = normalizeMultilineContent(String(content || ''))
     }
 
     // 检测是否为 markdown 格式
@@ -128,6 +133,16 @@ const MessagePanel = ({ messages }) => {
       Analysis: '#faf5ff',    // 浅紫色背景
     }
     return backgrounds[type] || '#f7fafc'
+  }
+
+  const normalizeMultilineContent = (value) => {
+    if (typeof value !== 'string') return value
+
+    return value
+      .replace(/\r\n/g, '\n')
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
   }
 
   return (

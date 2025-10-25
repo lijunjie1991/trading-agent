@@ -20,6 +20,11 @@ import './TaskDetail.css'
 const { Title, Text } = Typography
 const { TabPane } = Tabs
 
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+})
+
 const TaskDetail = () => {
   const { taskId } = useParams()
   const navigate = useNavigate()
