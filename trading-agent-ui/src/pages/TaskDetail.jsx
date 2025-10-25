@@ -159,15 +159,19 @@ const TaskDetail = () => {
         task={currentTask}
         finalDecision={finalDecision}
         isProcessing={isProcessing}
-        lastUpdateTime={lastPollingTime}
-        onViewReports={currentTask?.status === 'COMPLETED' ? handleViewReports : null}
       />
 
       {/* Two-Column Layout */}
       <Row gutter={24}>
         {/* Left Column: Messages */}
         <Col xs={24} lg={18}>
-          <MessagePanel messages={messages} />
+          <MessagePanel
+            messages={messages}
+            isProcessing={isProcessing}
+            taskStatus={currentTask?.status}
+            lastUpdateTime={lastPollingTime}
+            onViewReports={currentTask?.status === 'COMPLETED' ? handleViewReports : null}
+          />
         </Col>
 
         {/* Right Column: Stats & Metadata Sidebar */}

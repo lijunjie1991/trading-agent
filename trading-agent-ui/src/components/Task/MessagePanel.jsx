@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useLayoutEffect } from 'react'
-import { Card, Typography, Empty, Space, Tag, Button } from 'antd'
+import { Card, Typography, Empty, Space, Tag, Button, Badge } from 'antd'
+import { RobotOutlined, ClockCircleOutlined, SyncOutlined, TrophyOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import { getMessageTypeIcon, getMessageTypeLabel, formatTime } from '../../utils/helpers'
 import './ProcessingIndicator.css'
@@ -11,7 +12,13 @@ marked.setOptions({
   breaks: true,  // 允许单个换行符也产生换行效果
 })
 
-const MessagePanel = ({ messages }) => {
+const MessagePanel = ({
+  messages,
+  isProcessing = false,
+  taskStatus,
+  lastUpdateTime,
+  onViewReports,
+}) => {
   const containerRef = useRef(null)
   const [newMessageIds, setNewMessageIds] = useState(new Set())
   const [expandedIds, setExpandedIds] = useState(new Set())
@@ -172,15 +179,13 @@ const MessagePanel = ({ messages }) => {
       }
     }
 
-    // 禁用自动表格检测，让 Markdown 自然渲染
-    // 如果需要表格，LLM 会生成标准的 Markdown 表格格式
-    // const tableSection = extractTabularSection(stringContent)
-    // if (tableSection) {
-    //   return {
-    //     node: renderCsvSection(tableSection),
-    //     lengthHint,
-    //   }
-    // }
+    const tableSection = extractTabularSection(stringContent)
+    if (tableSection) {
+      return {
+        node: renderCsvSection(tableSection),
+        lengthHint,
+      }
+    }
 
     return {
       node: (
@@ -450,18 +455,127 @@ const MessagePanel = ({ messages }) => {
       .replace(/\\u([\dA-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
   }
 
+  const getProcessingInfo = () => {
+    if (taskStatus === 'RUNNING') {
+      return {
+        icon: <RobotOutlined className="spinning" style={{ fontSize: 16 }} />,
+        text: 'AI Analysis in Progress',
+        badge: 'LIVE',
+        color: '#667eea',
+        showDots: true,
+      }
+    }
+    if (taskStatus === 'PENDING') {
+      return {
+        icon: <ClockCircleOutlined className="pulse" style={{ fontSize: 16 }} />,
+        text: 'Queued for Processing',
+        badge: 'PENDING',
+        color: '#f59e0b',
+        showDots: false,
+      }
+    }
+    return null
+  }
+
+  const timeSinceUpdate = lastUpdateTime
+    ? Math.floor((Date.now() - new Date(lastUpdateTime).getTime()) / 1000)
+    : 0
+
+  const processingInfo = getProcessingInfo()
+  const isCompleted = taskStatus === 'COMPLETED'
+
+  const renderHeader = () => (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 16,
+        flexWrap: 'wrap',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {processingInfo && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '6px 14px',
+              borderRadius: 18,
+              background: processingInfo.color === '#667eea'
+                ? 'rgba(102, 126, 234, 0.15)'
+                : 'rgba(245, 158, 11, 0.15)',
+              border: `1px solid ${processingInfo.color}33`,
+            }}
+          >
+            <Badge
+              count={processingInfo.badge}
+              style={{
+                background: processingInfo.color,
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                height: 18,
+                lineHeight: '18px',
+                borderRadius: 9,
+                padding: '0 6px',
+              }}
+            />
+            <span style={{ color: processingInfo.color }}>{processingInfo.icon}</span>
+            <Text strong style={{ color: '#1f2933', fontSize: 13 }}>
+              {processingInfo.text}
+            </Text>
+            {processingInfo.showDots && (
+              <div className="typing-dots" style={{ marginLeft: 2 }}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            )}
+            {timeSinceUpdate > 0 && (
+              <>
+                <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.08)' }} />
+                <SyncOutlined spin style={{ color: processingInfo.color, fontSize: 12 }} />
+                <Text style={{ color: processingInfo.color, fontSize: 12, fontWeight: 600 }}>
+                  {timeSinceUpdate}s
+                </Text>
+              </>
+            )}
+          </div>
+        )}
+
+        {!isProcessing && isCompleted && onViewReports && (
+          <Button
+            type="primary"
+            icon={<TrophyOutlined />}
+            onClick={onViewReports}
+            size="small"
+            style={{
+              fontWeight: 600,
+              borderRadius: 16,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            View Reports
+          </Button>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Title level={5} style={{ margin: 0 }}>
+          Messages & Tools
+        </Title>
+        {messages.length > 0 && <Tag color="blue">{messages.length} messages</Tag>}
+      </div>
+    </div>
+  )
+
   return (
     <Card
-      title={
-        <Space>
-          <Title level={5} style={{ margin: 0 }}>
-            Messages & Tools
-          </Title>
-          {messages.length > 0 && (
-            <Tag color="blue">{messages.length} messages</Tag>
-          )}
-        </Space>
-      }
+      title={renderHeader()}
       style={{ display: 'flex', flexDirection: 'column' }}
       bodyStyle={{ flex: 1, overflow: 'hidden', padding: 0 }}
     >

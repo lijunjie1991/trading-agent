@@ -1,19 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Card, Typography, Space, Tag, Button, Badge } from 'antd'
-import {
-  RobotOutlined,
-  ClockCircleOutlined,
-  SyncOutlined,
-  FileTextOutlined,
-  ThunderboltFilled,
-  TrophyOutlined,
-} from '@ant-design/icons'
-import { getStatusColor } from '../../utils/helpers'
+import { Card, Typography, Tag, Badge } from 'antd'
+import { ThunderboltFilled } from '@ant-design/icons'
 import './ProcessingIndicator.css'
 
 const { Title, Text } = Typography
 
-const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onViewReports }) => {
+const CompactHeader = ({ task, finalDecision, isProcessing }) => {
   const [showCelebration, setShowCelebration] = useState(false)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const cardRef = useRef(null)
@@ -38,33 +30,6 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
     const y = ((e.clientY - rect.top) / rect.height) * 100
     setMousePosition({ x, y })
   }
-
-  const getProcessingInfo = () => {
-    if (task?.status === 'RUNNING') {
-      return {
-        icon: <RobotOutlined className="spinning" style={{ fontSize: 18 }} />,
-        text: 'AI Analysis in Progress',
-        showTypingDots: true,
-        color: '#667eea',
-        badge: 'LIVE',
-      }
-    }
-    if (task?.status === 'PENDING') {
-      return {
-        icon: <ClockCircleOutlined className="pulse" style={{ fontSize: 18 }} />,
-        text: 'Queued for Processing',
-        showTypingDots: false,
-        color: '#f59e0b',
-        badge: 'PENDING',
-      }
-    }
-    return null
-  }
-
-  const processingInfo = getProcessingInfo()
-  const timeSinceUpdate = lastUpdateTime
-    ? Math.floor((Date.now() - new Date(lastUpdateTime).getTime()) / 1000)
-    : 0
 
   const isCompleted = task?.status === 'COMPLETED'
   const isFailed = task?.status === 'FAILED'
@@ -267,99 +232,6 @@ const CompactHeader = ({ task, finalDecision, isProcessing, lastUpdateTime, onVi
               </div>
             )}
 
-            {/* Right Section: Action Button */}
-            {isCompleted && onViewReports && (
-              <Button
-                type="primary"
-                icon={<TrophyOutlined style={{ fontSize: 16 }} />}
-                onClick={onViewReports}
-                className={showCelebration ? 'success-pulse' : ''}
-                size="large"
-                style={{
-                  height: 44,
-                  paddingLeft: 24,
-                  paddingRight: 24,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  borderRadius: 12,
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  border: 'none',
-                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35), inset 0 -2px 0 rgba(0,0,0,0.1)',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.45)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0) scale(1)'
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)'
-                }}
-              >
-                View Reports
-              </Button>
-            )}
-
-            {/* Processing Indicator (inline) */}
-            {isProcessing && processingInfo && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '8px 16px',
-                  borderRadius: 20,
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  backdropFilter: 'blur(10px)',
-                }}
-              >
-                <Badge
-                  count={processingInfo.badge}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.3)',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: 9,
-                    height: 18,
-                    lineHeight: '18px',
-                    borderRadius: 9,
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                    padding: '0 6px',
-                  }}
-                />
-                <div
-                  className="icon-glow"
-                  style={{
-                    color: '#fff',
-                    fontSize: 16,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  {processingInfo.icon}
-                </div>
-                <Text strong style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
-                  {processingInfo.text}
-                </Text>
-                {processingInfo.showTypingDots && (
-                  <div className="typing-dots" style={{ marginLeft: 2 }}>
-                    <span style={{ background: '#fff' }}></span>
-                    <span style={{ background: '#fff' }}></span>
-                    <span style={{ background: '#fff' }}></span>
-                  </div>
-                )}
-                {timeSinceUpdate > 0 && (
-                  <>
-                    <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.3)', margin: '0 4px' }} />
-                    <SyncOutlined spin style={{ color: '#fff', fontSize: 12 }} />
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>
-                      {timeSinceUpdate}s
-                    </Text>
-                  </>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </Card>
