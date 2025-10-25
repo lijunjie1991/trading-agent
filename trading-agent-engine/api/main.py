@@ -163,19 +163,159 @@ executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
 
 # ==================== Helper Functions ====================
 
-def send_progress_sync(task_id: str, message_type: str, data: Dict[str, Any]) -> None:
+class MessageBuffer:
     """
-    Synchronously save progress messages to database.
+    Message buffer for tracking analysis progress.
+    Refactored from cli/main.py to save directly to database instead of deques.
+    """
+    def __init__(self, task_id: str):
+        self.task_id = task_id
+        self.report_sections = {
+            "market_report": None,
+            "sentiment_report": None,
+            "news_report": None,
+            "fundamentals_report": None,
+            "investment_plan": None,
+            "trader_investment_plan": None,
+            "final_trade_decision": None,
+        }
+        self.agent_status = {
+            # Analyst Team
+            "Market Analyst": "pending",
+            "Social Analyst": "pending",
+            "News Analyst": "pending",
+            "Fundamentals Analyst": "pending",
+            # Research Team
+            "Bull Researcher": "pending",
+            "Bear Researcher": "pending",
+            "Research Manager": "pending",
+            # Trading Team
+            "Trader": "pending",
+            # Risk Management Team
+            "Risky Analyst": "pending",
+            "Neutral Analyst": "pending",
+            "Safe Analyst": "pending",
+            # Portfolio Management Team
+            "Portfolio Manager": "pending",
+        }
+        self.current_agent = None
+
+    def add_message(self, message_type: str, content: str):
+        """
+        Add message to buffer and save to database (task_messages table).
+        Matches cli/main.py MessageBuffer.add_message() signature.
+
+        Args:
+            message_type: Type of message (e.g., "Reasoning", "System", "Analysis")
+            content: Message content
+        """
+        try:
+            # Save to database task_messages table directly
+            save_task_message(self.task_id, message_type, content)
+
+        except Exception as e:
+            print(f"⚠️ Failed to save message to database {self.task_id[:8]}: {e}")
+
+    def add_tool_call(self, tool_name: str, args: Dict[str, Any]):
+        """
+        Add tool call to buffer and save to database (task_messages table).
+        Matches cli/main.py MessageBuffer.add_tool_call() signature.
+
+        Args:
+            tool_name: Name of the tool
+            args: Tool arguments
+        """
+        try:
+            # Increment tool call counter
+            increment_task_stats(self.task_id, tool_calls=1)
+
+            # Save to database task_messages table
+            save_task_message(self.task_id, "tool_call", {
+                "tool_name": tool_name,
+                "args": args
+            })
+
+        except Exception as e:
+            print(f"⚠️ Failed to save tool call to database {self.task_id[:8]}: {e}")
+
+    def update_agent_status(self, agent: str, status: str):
+        """
+        Update agent status.
+        Matches cli/main.py MessageBuffer.update_agent_status() signature.
+
+        Args:
+            agent: Agent name
+            status: Status (pending, in_progress, completed)
+        """
+        if agent in self.agent_status:
+            self.agent_status[agent] = status
+            self.current_agent = agent
+
+            # Save status update to database
+            try:
+                save_task_message(self.task_id, "agent_status", {
+                    "agent": agent,
+                    "status": status
+                })
+            except Exception as e:
+                print(f"⚠️ Failed to save agent status to database {self.task_id[:8]}: {e}")
+
+    def update_report_section(self, section_name: str, content: str):
+        """
+        Update report section and save to database (reports table).
+        Matches cli/main.py MessageBuffer.update_report_section() signature.
+
+        Args:
+            section_name: Report section name
+            content: Report content
+        """
+        if section_name in self.report_sections:
+            self.report_sections[section_name] = content
+
+            try:
+                # Increment report counter
+                increment_task_stats(self.task_id, reports=1)
+
+                # Save to database task_messages table (for streaming/progress)
+                save_task_message(self.task_id, "report", {
+                    "report_type": section_name,
+                    "content": content
+                })
+
+                # Save to database reports table (structured storage)
+                save_report(self.task_id, section_name, content)
+
+            except Exception as e:
+                print(f"⚠️ Failed to save report to database {self.task_id[:8]}: {e}")
+
+
+def extract_content_string(content):
+    """
+    Extract string content from various message formats.
+    Matches cli/main.py extract_content_string() function.
 
     Args:
-        task_id: Unique task identifier
-        message_type: Type of message (status, message, tool_call, report, agent_status)
-        data: Message data dictionary
+        content: Content in various formats (str, list, dict, etc.)
+
+    Returns:
+        Extracted string content
     """
-    try:
-        save_task_message(task_id, message_type, data)
-    except Exception as e:
-        print(f"⚠️ Failed to save message to database {task_id[:8]}: {e}")
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        # Handle Anthropic's list format
+        text_parts = []
+        for item in content:
+            if isinstance(item, dict):
+                if item.get('type') == 'text':
+                    text_parts.append(item.get('text', ''))
+                elif item.get('type') == 'tool_use':
+                    text_parts.append(f"[Tool: {item.get('name', 'unknown')}]")
+            else:
+                text_parts.append(str(item))
+        return ' '.join(text_parts)
+    else:
+        return str(content)
 
 
 def extract_message_content(message) -> Optional[str]:
@@ -284,183 +424,21 @@ def get_message_type(message) -> str:
     return "unknown"
 
 
-def update_agent_status(task_id: str, chunk: Dict[str, Any], processed_agents: Set[str]) -> None:
+def update_research_team_status(message_buffer: MessageBuffer, status: str):
     """
-    Update agent status based on chunk keys.
+    Update status for all research team members and trader.
+    Matches cli/main.py update_research_team_status() function.
 
     Args:
-        task_id: Unique task identifier
-        chunk: Current chunk from graph stream
-        processed_agents: Set of already processed agent keys
+        message_buffer: MessageBuffer instance
+        status: Status to set (e.g., "in_progress", "completed")
     """
-    chunk_keys = list(chunk.keys())
+    research_team = ["Bull Researcher", "Bear Researcher", "Research Manager", "Trader"]
+    for agent in research_team:
+        message_buffer.update_agent_status(agent, status)
 
-    for key in chunk_keys:
-        # Skip non-agent keys and empty values
-        if key in ["messages"] or not chunk.get(key):
-            continue
-
-        # Skip already processed agents
-        if key in processed_agents:
-            continue
-
-        # Map node name to agent and send status
-        if key in AGENT_NAME_MAPPING:
-            processed_agents.add(key)
-            send_progress_sync(task_id, "agent_status", {
-                "agent": AGENT_NAME_MAPPING[key],
-                "status": "running"
-            })
 
 # ==================== Background Task Processing ====================
-
-def process_messages(
-    task_id: str,
-    chunk: Dict[str, Any],
-    processed_message_ids: Set[str]
-) -> None:
-    """
-    Process and save messages from chunk with deduplication.
-
-    Enhanced to handle all message types and multiple messages per chunk:
-    - HumanMessage: User inputs and system instructions
-    - AIMessage: LLM responses and tool calls
-    - ToolMessage: Tool execution results (can be multiple per chunk)
-
-    Args:
-        task_id: Unique task identifier
-        chunk: Current chunk from graph stream
-        processed_message_ids: Set of already processed message IDs
-    """
-
-    print(f"---------------------------------------------------------------------------------------------------------------------")
-
-    messages = chunk.get("messages", [])
-    if not messages:
-        return
-
-    # Check if chunk contains any report
-    has_report = any(report_type in chunk and chunk[report_type] for report_type in REPORT_TYPES)
-
-    # Process ALL messages in the chunk (not just the last one)
-    # This is important because a chunk can contain multiple ToolMessages
-    for message in messages:
-        # Get unique message ID
-        message_id = get_message_id(message)
-
-        # Get message type
-        msg_type = get_message_type(message)
-
-        print(f"{msg_type} || {has_report} || {message}")
-        print(f"---------------------------------------------------------------------------------------------------------------------")
-
-        # Skip if already processed
-        if message_id in processed_message_ids:
-            continue
-
-        # Mark as processed
-        processed_message_ids.add(message_id)
-
-        # === Process AIMessage ===
-        if msg_type == "ai":
-            # Increment LLM call counter (only for AI messages)
-            increment_task_stats(task_id, llm_calls=1)
-
-            # Process tool calls
-            if hasattr(message, "tool_calls") and message.tool_calls:
-                for tool_call in message.tool_calls:
-                    tool_name = tool_call.get("name") if isinstance(tool_call, dict) else getattr(tool_call, "name", "unknown")
-                    tool_args = tool_call.get("args") if isinstance(tool_call, dict) else getattr(tool_call, "args", {})
-
-                    # Increment tool call counter
-                    increment_task_stats(task_id, tool_calls=1)
-
-                    send_progress_sync(task_id, "tool_call", {
-                        "tool_name": tool_name,
-                        "args": tool_args
-                    })
-
-            # Process AI message content
-            content = extract_message_content(message)
-            if content and not should_filter_content(content):
-                # Skip saving message if chunk contains report
-                # because the report already contains the complete structured content
-                if not has_report:
-                    send_progress_sync(task_id, "message", {
-                        "role": "assistant",
-                        "content": content
-                    })
-
-        # === Process ToolMessage ===
-        elif msg_type == "tool":
-            content = extract_message_content(message)
-            if content:
-                # Get tool name from message
-                tool_name = getattr(message, "name", "unknown")
-
-                # Truncate content if too long (tool results can be very large)
-                max_preview_length = 2000
-                content_preview = content[:max_preview_length] if len(content) > max_preview_length else content
-
-                # Save tool result
-                send_progress_sync(task_id, "tool_result", {
-                    "tool_name": tool_name,
-                    "result_preview": content_preview,
-                    "result_length": len(content),
-                    "truncated": len(content) > max_preview_length
-                })
-
-        # === Process HumanMessage ===
-        elif msg_type == "human":
-            content = extract_message_content(message)
-            # Only save meaningful human messages (not too short, not empty)
-            if content and len(content.strip()) > 2:
-                send_progress_sync(task_id, "message", {
-                    "role": "user",
-                    "content": content.strip()
-                })
-
-
-def process_reports(
-    task_id: str,
-    chunk: Dict[str, Any],
-    processed_reports: Set[str]
-) -> None:
-    """
-    Process and save reports from chunk with deduplication.
-
-    Args:
-        task_id: Unique task identifier
-        chunk: Current chunk from graph stream
-        processed_reports: Set of already processed report identifiers (type:hash)
-    """
-    for report_type in REPORT_TYPES:
-        if report_type not in chunk or not chunk[report_type]:
-            continue
-
-        report_content = chunk[report_type]
-
-        # Generate unique identifier for this report
-        report_hash = generate_content_hash(report_content)
-        report_id = f"{report_type}:{report_hash}"
-
-        # Skip if already processed
-        if report_id in processed_reports:
-            continue
-
-        processed_reports.add(report_id)
-
-        # Increment report counter
-        increment_task_stats(task_id, reports=1)
-
-        # Save to task_message table (for analysis process)
-        send_progress_sync(task_id, "report", {
-            "report_type": report_type,
-            "content": report_content
-        })
-
-        # Save to report table (structured storage)
-        save_report(task_id, report_type, report_content)
 
 
 def configure_api_keys(request: AnalysisRequest) -> Tuple[Optional[str], Optional[str]]:
@@ -525,6 +503,7 @@ def create_analysis_config(request: AnalysisRequest, task_id: str) -> Dict[str, 
 def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
     """
     Run analysis task synchronously (executed in separate thread).
+    Completely refactored to match cli/main.py run_analysis() logic.
 
     Args:
         task_id: Unique task identifier
@@ -540,11 +519,6 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
             update_task_status_raw_sql(task_id, "FAILED", error_message=error_msg)
             return
 
-        send_progress_sync(task_id, "status", {
-            "status": "running",
-            "message": f"Start analysis {request.ticker} on {request.analysis_date}"
-        })
-
         # Configure API keys and save originals
         original_keys = configure_api_keys(request)
 
@@ -556,12 +530,12 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
         # Initialize TradingAgents
         ta = TradingAgentsGraph(
             selected_analysts=[analyst.value for analyst in request.selected_analysts],
-            debug=False,
+            debug=True,  # Match cli/main.py debug=True
             config=config
         )
 
         # Create initial state
-        init_state = ta.propagator.create_initial_state(
+        init_agent_state = ta.propagator.create_initial_state(
             request.ticker,
             request.analysis_date
         )
@@ -569,43 +543,274 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
 
         print(f"📊 Start streaming analysis...")
 
-        # Initialize deduplication trackers
-        processed_message_ids: Set[str] = set()
-        processed_reports: Set[str] = set()
-        processed_agents: Set[str] = set()
+        # Initialize MessageBuffer (matches cli/main.py)
+        message_buffer = MessageBuffer(task_id)
 
-        # Stream analysis
-        chunk_count = 0
-        final_chunk = None
+        # Convert selected_analysts to string values for comparison (matches cli/main.py)
+        selected_analyst_values = [analyst.value for analyst in request.selected_analysts]
 
-        for chunk in ta.graph.stream(init_state, **args):
-            chunk_count += 1
-            final_chunk = chunk
+        # Add initial messages
+        message_buffer.add_message("System", f"Selected ticker: {request.ticker}")
+        message_buffer.add_message("System", f"Analysis date: {request.analysis_date}")
+        message_buffer.add_message("System", f"Selected analysts: {', '.join(selected_analyst_values)}")
 
-            # Update agent status
-            # update_agent_status(task_id, chunk, processed_agents)
+        # Reset agent statuses (already initialized in MessageBuffer)
+        # Reset report sections (already initialized in MessageBuffer)
 
-            # Process messages with deduplication
-            process_messages(task_id, chunk, processed_message_ids)
+        # Update agent status to in_progress for the first analyst
+        first_analyst = f"{request.selected_analysts[0].value.capitalize()} Analyst"
+        message_buffer.update_agent_status(first_analyst, "in_progress")
 
-            # Process reports with deduplication
-            process_reports(task_id, chunk, processed_reports)
+        # Stream the analysis (match cli/main.py lines 850-1078)
+        trace = []
+        for chunk in ta.graph.stream(init_agent_state, **args):
+            if len(chunk["messages"]) > 0:
+                # Get the last message from the chunk
+                last_message = chunk["messages"][-1]
 
-        print(f"✅ Analysis completed, processed {chunk_count} chunks")
+                # Extract message content and type
+                if hasattr(last_message, "content"):
+                    content = extract_content_string(last_message.content)
+                    msg_type = "Reasoning"
+                else:
+                    content = str(last_message)
+                    msg_type = "System"
 
-        # Get final decision
-        decision = "UNKNOWN"
-        if final_chunk and "final_trade_decision" in final_chunk:
-            decision = ta.process_signal(final_chunk["final_trade_decision"])
+                # Add message to buffer
+                message_buffer.add_message(msg_type, content)
+
+                # If it's a tool call, add it to tool calls
+                if hasattr(last_message, "tool_calls"):
+                    for tool_call in last_message.tool_calls:
+                        # Handle both dictionary and object tool calls
+                        if isinstance(tool_call, dict):
+                            message_buffer.add_tool_call(
+                                tool_call["name"], tool_call["args"]
+                            )
+                        else:
+                            message_buffer.add_tool_call(tool_call.name, tool_call.args)
+
+                # Update reports and agent status based on chunk content
+                # Analyst Team Reports
+                if "market_report" in chunk and chunk["market_report"]:
+                    message_buffer.update_report_section(
+                        "market_report", chunk["market_report"]
+                    )
+                    message_buffer.update_agent_status("Market Analyst", "completed")
+                    # Set next analyst to in_progress
+                    if "social" in selected_analyst_values:
+                        message_buffer.update_agent_status(
+                            "Social Analyst", "in_progress"
+                        )
+
+                if "sentiment_report" in chunk and chunk["sentiment_report"]:
+                    message_buffer.update_report_section(
+                        "sentiment_report", chunk["sentiment_report"]
+                    )
+                    message_buffer.update_agent_status("Social Analyst", "completed")
+                    # Set next analyst to in_progress
+                    if "news" in selected_analyst_values:
+                        message_buffer.update_agent_status(
+                            "News Analyst", "in_progress"
+                        )
+
+                if "news_report" in chunk and chunk["news_report"]:
+                    message_buffer.update_report_section(
+                        "news_report", chunk["news_report"]
+                    )
+                    message_buffer.update_agent_status("News Analyst", "completed")
+                    # Set next analyst to in_progress
+                    if "fundamentals" in selected_analyst_values:
+                        message_buffer.update_agent_status(
+                            "Fundamentals Analyst", "in_progress"
+                        )
+
+                if "fundamentals_report" in chunk and chunk["fundamentals_report"]:
+                    message_buffer.update_report_section(
+                        "fundamentals_report", chunk["fundamentals_report"]
+                    )
+                    message_buffer.update_agent_status(
+                        "Fundamentals Analyst", "completed"
+                    )
+                    # Set all research team members to in_progress
+                    update_research_team_status(message_buffer, "in_progress")
+
+                # Research Team - Handle Investment Debate State
+                if (
+                    "investment_debate_state" in chunk
+                    and chunk["investment_debate_state"]
+                ):
+                    debate_state = chunk["investment_debate_state"]
+
+                    # Update Bull Researcher status and report
+                    if "bull_history" in debate_state and debate_state["bull_history"]:
+                        # Keep all research team members in progress
+                        update_research_team_status(message_buffer, "in_progress")
+                        # Extract latest bull response
+                        bull_responses = debate_state["bull_history"].split("\n")
+                        latest_bull = bull_responses[-1] if bull_responses else ""
+                        if latest_bull:
+                            message_buffer.add_message("Reasoning", latest_bull)
+                            # Update research report with bull's latest analysis
+                            message_buffer.update_report_section(
+                                "investment_plan",
+                                f"### Bull Researcher Analysis\n{latest_bull}",
+                            )
+
+                    # Update Bear Researcher status and report
+                    if "bear_history" in debate_state and debate_state["bear_history"]:
+                        # Keep all research team members in progress
+                        update_research_team_status(message_buffer, "in_progress")
+                        # Extract latest bear response
+                        bear_responses = debate_state["bear_history"].split("\n")
+                        latest_bear = bear_responses[-1] if bear_responses else ""
+                        if latest_bear:
+                            message_buffer.add_message("Reasoning", latest_bear)
+                            # Update research report with bear's latest analysis
+                            message_buffer.update_report_section(
+                                "investment_plan",
+                                f"{message_buffer.report_sections['investment_plan']}\n\n### Bear Researcher Analysis\n{latest_bear}",
+                            )
+
+                    # Update Research Manager status and final decision
+                    if (
+                        "judge_decision" in debate_state
+                        and debate_state["judge_decision"]
+                    ):
+                        # Keep all research team members in progress until final decision
+                        update_research_team_status(message_buffer, "in_progress")
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Research Manager: {debate_state['judge_decision']}",
+                        )
+                        # Update research report with final decision
+                        message_buffer.update_report_section(
+                            "investment_plan",
+                            f"{message_buffer.report_sections['investment_plan']}\n\n### Research Manager Decision\n{debate_state['judge_decision']}",
+                        )
+                        # Mark all research team members as completed
+                        update_research_team_status(message_buffer, "completed")
+                        # Set first risk analyst to in_progress
+                        message_buffer.update_agent_status(
+                            "Risky Analyst", "in_progress"
+                        )
+
+                # Trading Team
+                if (
+                    "trader_investment_plan" in chunk
+                    and chunk["trader_investment_plan"]
+                ):
+                    message_buffer.update_report_section(
+                        "trader_investment_plan", chunk["trader_investment_plan"]
+                    )
+                    # Set first risk analyst to in_progress
+                    message_buffer.update_agent_status("Risky Analyst", "in_progress")
+
+                # Risk Management Team - Handle Risk Debate State
+                if "risk_debate_state" in chunk and chunk["risk_debate_state"]:
+                    risk_state = chunk["risk_debate_state"]
+
+                    # Update Risky Analyst status and report
+                    if (
+                        "current_risky_response" in risk_state
+                        and risk_state["current_risky_response"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Risky Analyst", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Risky Analyst: {risk_state['current_risky_response']}",
+                        )
+                        # Update risk report with risky analyst's latest analysis only
+                        message_buffer.update_report_section(
+                            "final_trade_decision",
+                            f"### Risky Analyst Analysis\n{risk_state['current_risky_response']}",
+                        )
+
+                    # Update Safe Analyst status and report
+                    if (
+                        "current_safe_response" in risk_state
+                        and risk_state["current_safe_response"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Safe Analyst", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Safe Analyst: {risk_state['current_safe_response']}",
+                        )
+                        # Update risk report with safe analyst's latest analysis only
+                        message_buffer.update_report_section(
+                            "final_trade_decision",
+                            f"### Safe Analyst Analysis\n{risk_state['current_safe_response']}",
+                        )
+
+                    # Update Neutral Analyst status and report
+                    if (
+                        "current_neutral_response" in risk_state
+                        and risk_state["current_neutral_response"]
+                    ):
+                        message_buffer.update_agent_status(
+                            "Neutral Analyst", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Neutral Analyst: {risk_state['current_neutral_response']}",
+                        )
+                        # Update risk report with neutral analyst's latest analysis only
+                        message_buffer.update_report_section(
+                            "final_trade_decision",
+                            f"### Neutral Analyst Analysis\n{risk_state['current_neutral_response']}",
+                        )
+
+                    # Update Portfolio Manager status and final decision
+                    if "judge_decision" in risk_state and risk_state["judge_decision"]:
+                        message_buffer.update_agent_status(
+                            "Portfolio Manager", "in_progress"
+                        )
+                        message_buffer.add_message(
+                            "Reasoning",
+                            f"Portfolio Manager: {risk_state['judge_decision']}",
+                        )
+                        # Update risk report with final decision only
+                        message_buffer.update_report_section(
+                            "final_trade_decision",
+                            f"### Portfolio Manager Decision\n{risk_state['judge_decision']}",
+                        )
+                        # Mark risk analysts as completed
+                        message_buffer.update_agent_status("Risky Analyst", "completed")
+                        message_buffer.update_agent_status("Safe Analyst", "completed")
+                        message_buffer.update_agent_status(
+                            "Neutral Analyst", "completed"
+                        )
+                        message_buffer.update_agent_status(
+                            "Portfolio Manager", "completed"
+                        )
+
+            trace.append(chunk)
+
+        # Get final state and decision
+        final_state = trace[-1]
+        decision = ta.process_signal(final_state["final_trade_decision"])
+
+        # Update all agent statuses to completed
+        for agent in message_buffer.agent_status:
+            message_buffer.update_agent_status(agent, "completed")
+
+        message_buffer.add_message(
+            "Analysis", f"Completed analysis for {request.analysis_date}"
+        )
+
+        # Update final report sections
+        for section in message_buffer.report_sections.keys():
+            if section in final_state:
+                message_buffer.update_report_section(section, final_state[section])
+
+        print(f"✅ Analysis completed, processed {len(trace)} chunks")
 
         # Update task status to completed
         update_task_status(task_id, "COMPLETED", final_decision=decision)
-
-        send_progress_sync(task_id, "status", {
-            "status": "completed",
-            "decision": decision,
-            "message": f"Analysis completed! Decision: {decision}"
-        })
 
         # Restore original API keys
         restore_api_keys(*original_keys)
@@ -618,11 +823,6 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
         # Update task status to failed
         if not update_task_status(task_id, "FAILED", error_message=str(e)):
             print(f"❌ Failed to update task {task_id[:8]} status to FAILED")
-
-        send_progress_sync(task_id, "status", {
-            "status": "failed",
-            "error": str(e)
-        })
 
     finally:
         # Clean up memory collections
