@@ -8,7 +8,7 @@ const { Title, Text } = Typography
 
 marked.setOptions({
   gfm: true,
-  breaks: true,
+  breaks: false,
 })
 
 const MessagePanel = ({ messages }) => {

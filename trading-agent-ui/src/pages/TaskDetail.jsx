@@ -22,7 +22,7 @@ const { TabPane } = Tabs
 
 marked.setOptions({
   gfm: true,
-  breaks: true,
+  breaks: false,
 })
 
 const TaskDetail = () => {
