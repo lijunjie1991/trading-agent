@@ -208,14 +208,17 @@ const TaskDetail = () => {
             </div>
           </div>
         ) : reports && reports.length > 0 ? (
-          <Tabs defaultActiveKey="all" type="card">
-            <TabPane tab="📑 All Reports" key="all">
-              <div style={{ padding: '16px 0' }}>
-                {reports.map((report) => renderReport(report))}
-              </div>
-            </TabPane>
-            {reports.map((report) => {
+          <Tabs
+            defaultActiveKey={
+              reports[0].report_type ||
+              reports[0].reportType ||
+              `report-${reports[0].id || 0}`
+            }
+            type="card"
+          >
+            {reports.map((report, index) => {
               const reportType = report.report_type || report.reportType
+              const tabKey = reportType || `report-${report.id || index}`
               const reportTitles = {
                 market_report: '📈 Market',
                 sentiment_report: '💬 Sentiment',
@@ -226,7 +229,7 @@ const TaskDetail = () => {
                 final_trade_decision: '✅ Decision',
               }
               return (
-                <TabPane tab={reportTitles[reportType] || reportType} key={reportType}>
+                <TabPane tab={reportTitles[reportType] || reportType || `Report ${index + 1}`} key={tabKey}>
                   <div style={{ padding: '16px 0' }}>
                     {renderReport(report)}
                   </div>

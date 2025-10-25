@@ -553,12 +553,19 @@ const MessagePanel = ({
             onClick={onViewReports}
             size="small"
             style={{
-              fontWeight: 600,
-              borderRadius: 16,
+              fontWeight: 700,
+              borderRadius: 18,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 8,
+              padding: '8px 18px',
+              background: 'linear-gradient(135deg, #f472b6 0%, #a855f7 45%, #6366f1 100%)',
+              border: 'none',
+              boxShadow: '0 8px 20px rgba(99, 102, 241, 0.35)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
             }}
+            className="view-reports-button"
           >
             View Reports
           </Button>

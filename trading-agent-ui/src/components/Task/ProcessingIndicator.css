@@ -264,6 +264,19 @@
   pointer-events: none;
 }
 
+.view-reports-button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.view-reports-button:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.4) !important;
+}
+
+.view-reports-button:active {
+  transform: scale(0.97);
+}
+
 /* New Message Highlight */
 .new-message-highlight {
   animation: highlightFade 2s ease-out;
