@@ -310,7 +310,7 @@ const MessagePanel = ({ messages }) => {
     const value = rest.join(':').trim()
     if (!key || !value) return false
     if (key.length > 50) return false
-    return /^[\w\-()/\s.]+$/.test(key)
+    return true
   }
 
   const parseCommaSeparatedBlock = (blockLines) => {
@@ -490,9 +490,9 @@ const MessagePanel = ({ messages }) => {
                       style={{ padding: 0, marginTop: 8 }}
                       onClick={() => toggleExpand(messageId)}
                     >
-                      {isExpanded ? '收起内容' : '展开更多'}
+                      {isExpanded ? 'Collapse' : 'Expand more'}
                     </Button>
-                  </div>
+                  )}
                 </div>
               )
             })}
