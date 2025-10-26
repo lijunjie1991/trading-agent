@@ -551,33 +551,51 @@ const MessagePanel = ({
             onClick={onViewReports}
             size="default"
             style={{
-              fontWeight: 500,
-              borderRadius: 8,
-              padding: '8px 16px',
-              background: '#fff',
-              border: '2px solid #667eea',
-              color: '#667eea',
-              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)',
-              transition: 'all 0.2s ease',
-              fontSize: '13px',
+              fontWeight: 600,
+              borderRadius: 10,
+              padding: '10px 20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              color: '#fff',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.25)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              fontSize: '14px',
               minWidth: 'fit-content',
+              position: 'relative',
+              overflow: 'hidden',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#667eea';
-              e.currentTarget.style.color = '#fff';
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.4)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.color = '#667eea';
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.15)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.25)';
             }}
           >
-            📊 View Reports
+            <span style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              🏆 View Reports
+            </span>
+            {/* Shimmer effect for premium feel */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+              transition: 'left 0.6s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.left = '100%';
+            }}
+            />
           </Button>
         )}
       </div>
