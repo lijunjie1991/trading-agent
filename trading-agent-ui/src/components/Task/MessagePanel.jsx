@@ -555,26 +555,26 @@ const MessagePanel = ({
               borderRadius: 8,
               padding: '8px 16px',
               background: '#fff',
-              border: '2px solid #ff7f50',
-              color: '#ff7f50',
-              boxShadow: '0 2px 8px rgba(255, 127, 80, 0.2)',
+              border: '2px solid #667eea',
+              color: '#667eea',
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)',
               transition: 'all 0.2s ease',
               fontSize: '13px',
               minWidth: 'fit-content',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#ff7f50';
+              e.currentTarget.style.background = '#667eea';
               e.currentTarget.style.color = '#fff';
-              e.currentTarget.style.borderColor = '#ff7f50';
+              e.currentTarget.style.borderColor = '#667eea';
               e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 127, 80, 0.3)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.color = '#ff7f50';
-              e.currentTarget.style.borderColor = '#ff7f50';
+              e.currentTarget.style.color = '#667eea';
+              e.currentTarget.style.borderColor = '#667eea';
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(255, 127, 80, 0.2)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.15)';
             }}
           >
             📊 View Reports
