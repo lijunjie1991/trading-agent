@@ -74,7 +74,8 @@ const MessagePanel = ({
     Object.entries(contentRefs.current).forEach(([id, element]) => {
       if (!element) return
       const contentHeight = element.scrollHeight
-      if (contentHeight > COLLAPSED_HEIGHT + 4) {
+      // 确保内容真正超出折叠高度才显示展开按钮
+      if (contentHeight > COLLAPSED_HEIGHT + 20) {
         nextOverflow.add(id)
       }
     })
@@ -495,19 +496,13 @@ const MessagePanel = ({
         flexWrap: 'wrap',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', paddingTop: '2px', paddingBottom: '2px' }}>
         {processingInfo && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              padding: '6px 14px',
-              borderRadius: 18,
-              background: processingInfo.color === '#667eea'
-                ? 'rgba(102, 126, 234, 0.15)'
-                : 'rgba(245, 158, 11, 0.15)',
-              border: `1px solid ${processingInfo.color}33`,
             }}
           >
             <Badge
@@ -534,52 +529,31 @@ const MessagePanel = ({
                 <span></span>
               </div>
             )}
-            {timeSinceUpdate > 0 && (
-              <>
-                <div style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.08)' }} />
-                <SyncOutlined spin style={{ color: processingInfo.color, fontSize: 12 }} />
-                <Text style={{ color: processingInfo.color, fontSize: 12, fontWeight: 600 }}>
-                  {timeSinceUpdate}s
-                </Text>
-              </>
-            )}
-          </div>
+            </div>
         )}
 
         {!isProcessing && isCompleted && onViewReports && (
           <Button
             onClick={onViewReports}
+            type="primary"
             size="default"
-            className="view-reports-button"
+            className="view-reports-button premium-btn"
             style={{
               fontWeight: 600,
-              borderRadius: 8,
-              padding: '9px 18px',
-              background: '#fff',
-              border: '2px solid #667eea',
-              color: '#667eea',
-              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)',
-              transition: 'all 0.2s ease',
+              borderRadius: 10,
               fontSize: '13px',
-              minWidth: '120px',
+              height: '36px',
+              paddingLeft: '18px',
+              paddingRight: '18px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 3px 12px rgba(102, 126, 234, 0.2), 0 0 0 1px rgba(102, 126, 234, 0.1)',
               position: 'relative',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#667eea';
-              e.currentTarget.style.color = '#fff';
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(102, 126, 234, 0.3)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff';
-              e.currentTarget.style.color = '#667eea';
-              e.currentTarget.style.borderColor = '#667eea';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.15)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
           >
-            View Reports
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              📊 View Reports
+            </span>
           </Button>
         )}
       </div>
@@ -617,8 +591,14 @@ const MessagePanel = ({
               const isExpanded = expandedIds.has(messageId)
               const isOverflowing = overflowingIds.has(messageId)
               const { node: contentNode, lengthHint } = buildMessageContent(message)
-              const hasLongContent = isOverflowing || lengthHint > LONG_CONTENT_THRESHOLD
-              const showToggle = hasLongContent || isExpanded
+              // 只有当内容真正超出折叠高度时才显示展开按钮
+              const contentHeight = contentRefs.current[messageId]?.scrollHeight || 0
+              const hasRealOverflow = contentHeight > COLLAPSED_HEIGHT + 10
+              const hasLongContent = hasRealOverflow || lengthHint > LONG_CONTENT_THRESHOLD
+
+              // 确保只有在真正有更多内容可显示时才显示展开按钮
+              const shouldShowToggle = hasLongContent && !isExpanded
+              const showToggle = shouldShowToggle || isExpanded
               const showGradient = !isExpanded && hasLongContent
 
               return (
@@ -654,7 +634,8 @@ const MessagePanel = ({
                     <div
                       className="message-content-body"
                       style={{
-                        maxHeight: isExpanded ? 'none' : COLLAPSED_HEIGHT,
+                        maxHeight: isExpanded ? '1000px' : COLLAPSED_HEIGHT,
+                        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                       }}
                     >
                       <div
@@ -678,10 +659,38 @@ const MessagePanel = ({
                     <Button
                       type="link"
                       size="small"
-                      style={{ padding: 0, marginTop: 8 }}
+                      className="expand-toggle-btn"
+                      style={{
+                        padding: '4px 8px',
+                        marginTop: 8,
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: '#667eea',
+                        border: '1px solid #e0e7ff',
+                        borderRadius: 4,
+                        transition: 'all 0.2s ease'
+                      }}
                       onClick={() => toggleExpand(messageId)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#f0f3ff';
+                        e.currentTarget.style.borderColor = '#667eea';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = '#e0e7ff';
+                      }}
                     >
-                      {isExpanded ? 'Collapse' : 'Expand more'}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {isExpanded ? (
+                          <>
+                            ↑ <span>Show less</span>
+                          </>
+                        ) : (
+                          <>
+                            ↓ <span>Show more</span>
+                          </>
+                        )}
+                      </span>
                     </Button>
                   )}
                 </div>
