@@ -548,36 +548,36 @@ const MessagePanel = ({
 
         {!isProcessing && isCompleted && onViewReports && (
           <Button
-            type="primary"
-            icon={<TrophyOutlined />}
             onClick={onViewReports}
-            size="small"
+            size="default"
             style={{
-              fontWeight: 600,
-              borderRadius: 12,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 20px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              position: 'relative',
-              overflow: 'hidden',
-              fontSize: '14px',
+              fontWeight: 500,
+              borderRadius: 8,
+              padding: '8px 16px',
+              background: '#fff',
+              border: '2px solid #ff7f50',
+              color: '#ff7f50',
+              boxShadow: '0 2px 8px rgba(255, 127, 80, 0.2)',
+              transition: 'all 0.2s ease',
+              fontSize: '13px',
+              minWidth: 'fit-content',
             }}
-            className="view-reports-button"
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.4)';
+              e.currentTarget.style.background = '#ff7f50';
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = '#ff7f50';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 127, 80, 0.3)';
             }}
             onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff';
+              e.currentTarget.style.color = '#ff7f50';
+              e.currentTarget.style.borderColor = '#ff7f50';
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(255, 127, 80, 0.2)';
             }}
           >
-            <span style={{ position: 'relative', zIndex: 1 }}>View Reports</span>
+            📊 View Reports
           </Button>
         )}
       </div>
