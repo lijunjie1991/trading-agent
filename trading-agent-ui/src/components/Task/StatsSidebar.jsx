@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
 import { formatDateTime } from '../../utils/helpers'
+import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
 import './ProcessingIndicator.css'
 
 const { Text } = Typography
@@ -127,7 +128,11 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
               Research Depth
             </Text>
             <Text style={{ fontSize: 11 }}>
-              Level {task?.researchDepth || task?.research_depth || 'N/A'}
+              {(() => {
+                const depth = task?.researchDepth || task?.research_depth
+                const depthOption = RESEARCH_DEPTH_OPTIONS.find(option => option.value === depth)
+                return depthOption ? depthOption.label : 'N/A'
+              })()}
             </Text>
           </div>
 

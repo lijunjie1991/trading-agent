@@ -10,6 +10,7 @@ import {
   UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import { logout } from '../../store/slices/authSlice'
 
@@ -45,7 +46,12 @@ const MainLayout = () => {
   ]
 
   const handleMenuClick = ({ key }) => {
-    navigate(key)
+    if (key === 'disclaimer') {
+      // Open PDF directly in new window
+      window.open('/docs/disclaimer.pdf', '_blank', 'noopener,noreferrer')
+    } else {
+      navigate(key)
+    }
   }
 
   const handleLogout = async () => {
@@ -169,30 +175,149 @@ const MainLayout = () => {
           theme="dark"
         />
 
-        {/* Collapse Toggle Button */}
+        {/* Bottom Section */}
         <div
           style={{
             position: 'absolute',
-            bottom: 24,
+            bottom: 0,
             left: 0,
             right: 0,
-            padding: '0 16px',
+            padding: '16px',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(0,0,0,0.2)',
           }}
         >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              width: '100%',
-              height: 48,
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          />
+          {!collapsed ? (
+            // Expanded state - Two separate buttons
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Button
+                type="text"
+                icon={<FileTextOutlined />}
+                onClick={() => window.open('/docs/disclaimer.pdf', '_blank', 'noopener,noreferrer')}
+                style={{
+                  width: '100%',
+                  height: 40,
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  gap: 12,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  transition: 'all 0.2s',
+                  padding: '0 16px',
+                  boxSizing: 'border-box',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+                }}
+              >
+                Disclaimer
+              </Button>
+
+              <Button
+                type="text"
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
+                style={{
+                  width: '100%',
+                  height: 40,
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  gap: 12,
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  transition: 'all 0.2s',
+                  padding: '0 16px',
+                  boxSizing: 'border-box',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
+                }}
+              >
+                Collapse
+              </Button>
+            </div>
+          ) : (
+            // Collapsed state - Icon only buttons
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Button
+                type="text"
+                icon={<FileTextOutlined />}
+                onClick={() => window.open('/docs/disclaimer.pdf', '_blank', 'noopener,noreferrer')}
+                style={{
+                  width: '100%',
+                  height: 40,
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  transition: 'all 0.2s',
+                  padding: 0,
+                  boxSizing: 'border-box',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+                }}
+              />
+
+              <Button
+                type="text"
+                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                onClick={() => setCollapsed(!collapsed)}
+                style={{
+                  width: '100%',
+                  height: 40,
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  transition: 'all 0.2s',
+                  padding: 0,
+                  boxSizing: 'border-box',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.7)'
+                }}
+              />
+            </div>
+          )}
         </div>
       </Sider>
 

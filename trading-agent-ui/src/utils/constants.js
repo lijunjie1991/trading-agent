@@ -80,11 +80,11 @@ export const ALL_AGENTS = [
 
 // Research Depth Options
 export const RESEARCH_DEPTH_OPTIONS = [
-  { value: 1, label: 'Shallow (1)', description: 'Quick analysis with basic insights' },
-  { value: 2, label: 'Medium (2)', description: 'Moderate depth with standard research' },
-  { value: 3, label: 'Deep (3)', description: 'In-depth analysis with comprehensive research' },
-  { value: 4, label: 'Very Deep (4)', description: 'Very thorough with extensive investigation' },
-  { value: 5, label: 'Maximum (5)', description: 'Maximum depth with exhaustive analysis' },
+  { value: 1, label: 'Shallow', description: 'Quick analysis with basic insights' },
+  { value: 2, label: 'Medium', description: 'Moderate depth with standard research' },
+  { value: 3, label: 'Deep', description: 'In-depth analysis with comprehensive research' },
+  { value: 4, label: 'Very Deep', description: 'Very thorough with extensive investigation' },
+  { value: 5, label: 'Maximum', description: 'Maximum depth with exhaustive analysis' },
 ]
 
 // Decision Types

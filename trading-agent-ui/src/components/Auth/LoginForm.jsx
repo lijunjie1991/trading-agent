@@ -36,9 +36,10 @@ const LoginForm = ({ onSubmit, loading, error }) => {
         ]}
       >
         <Input
-          prefix={<MailOutlined />}
+          prefix={<MailOutlined style={{ marginRight: 8 }} />}
           placeholder="Email"
           autoComplete="email"
+          style={{ paddingLeft: 12 }}
         />
       </Form.Item>
 
@@ -52,9 +53,10 @@ const LoginForm = ({ onSubmit, loading, error }) => {
         ]}
       >
         <Input.Password
-          prefix={<LockOutlined />}
+          prefix={<LockOutlined style={{ marginRight: 8 }} />}
           placeholder="Password"
           autoComplete="current-password"
+          style={{ paddingLeft: 12 }}
         />
       </Form.Item>
 
