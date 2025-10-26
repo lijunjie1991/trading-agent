@@ -51,6 +51,7 @@ cors:
   allowedOrigins:
     - 'https://sandbox.quantumhusky.ai/'
     - "http://sandbox.quantumhusky.ai/"
+    - "http://localhost:3000"
   allowedMethods:
     - GET
     - POST
