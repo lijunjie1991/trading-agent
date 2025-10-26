@@ -553,21 +553,31 @@ const MessagePanel = ({
             onClick={onViewReports}
             size="small"
             style={{
-              fontWeight: 700,
-              borderRadius: 18,
+              fontWeight: 600,
+              borderRadius: 12,
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              padding: '8px 18px',
-              background: 'linear-gradient(135deg, #f472b6 0%, #a855f7 45%, #6366f1 100%)',
+              padding: '10px 20px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               border: 'none',
-              boxShadow: '0 8px 20px rgba(99, 102, 241, 0.35)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              overflow: 'hidden',
+              fontSize: '14px',
             }}
             className="view-reports-button"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.3)';
+            }}
           >
-            View Reports
+            <span style={{ position: 'relative', zIndex: 1 }}>View Reports</span>
           </Button>
         )}
       </div>
