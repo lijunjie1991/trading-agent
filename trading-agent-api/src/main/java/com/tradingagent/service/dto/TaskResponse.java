@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -30,4 +31,15 @@ public class TaskResponse {
     private Integer toolCalls;
     private Integer llmCalls;
     private Integer reports;
+
+    // Billing fields
+    private String paymentStatus;
+    private String paymentIntentId;
+    private Integer amountCents;
+    private String currency;
+    private String chargeType;
+    private String pricingStrategyCode;
+    private Map<String, Object> pricingSnapshot;
+    private LocalDateTime paidAt;
+    private LocalDateTime queuedAt;
 }

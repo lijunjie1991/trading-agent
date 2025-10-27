@@ -7,7 +7,7 @@ import {
   CalendarOutlined,
 } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
-import { formatDateTime } from '../../utils/helpers'
+import { formatCurrency, formatDateTime } from '../../utils/helpers'
 import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
 import './ProcessingIndicator.css'
 
@@ -48,6 +48,18 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
 
     prevStatsRef.current = stats
   }, [stats])
+
+  const paymentStatus = task?.paymentStatus || task?.payment_status
+  const paymentAmount = task?.amountCents ?? task?.amount_cents
+  const paymentCurrency = task?.currency || 'usd'
+  const paymentTagColor = {
+    FREE_GRANTED: 'success',
+    WAITING_PAYMENT: 'warning',
+    PROCESSING: 'processing',
+    PAID: 'success',
+    FAILED: 'error',
+    REFUNDED: 'default',
+  }
 
   return (
     <div style={{ position: 'sticky', top: 24 }}>
@@ -193,6 +205,58 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
           </div>
         </Space>
       </Card>
+
+      {paymentStatus && (
+        <Card title={<Text strong style={{ fontSize: 13 }}>Billing</Text>} bodyStyle={{ padding: '12px' }} style={{ marginTop: 12 }}>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <div>
+              <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>
+                Payment Status
+              </Text>
+              <Tag color={paymentTagColor[paymentStatus] || 'default'} style={{ textTransform: 'capitalize' }}>
+                {paymentStatus.replace(/_/g, ' ').toLowerCase()}
+              </Tag>
+            </div>
+
+            <Divider style={{ margin: '4px 0' }} />
+
+            <div>
+              <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>
+                Amount
+              </Text>
+              <Text style={{ fontSize: 12, color: '#111827', fontWeight: 600 }}>
+                {paymentAmount !== undefined ? formatCurrency(paymentAmount, paymentCurrency) : '—'}
+              </Text>
+            </div>
+
+            {task?.paidAt && (
+              <>
+                <Divider style={{ margin: '4px 0' }} />
+                <div>
+                  <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>
+                    Paid At
+                  </Text>
+                  <Text style={{ fontSize: 11 }}>
+                    {formatDateTime(task.paidAt)}
+                  </Text>
+                </div>
+              </>
+            )}
+
+            {task?.pricingStrategyCode && (
+              <>
+                <Divider style={{ margin: '4px 0' }} />
+                <div>
+                  <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 2 }}>
+                    Strategy
+                  </Text>
+                  <Text style={{ fontSize: 11 }}>{task.pricingStrategyCode}</Text>
+                </div>
+              </>
+            )}
+          </Space>
+        </Card>
+      )}
     </div>
   )
 }

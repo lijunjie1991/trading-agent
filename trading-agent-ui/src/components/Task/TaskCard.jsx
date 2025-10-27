@@ -9,7 +9,7 @@ import {
   TeamOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { getStatusColor, formatDateTime, getDecisionBadgeStatus, calculateDuration } from '../../utils/helpers'
+import { getStatusColor, formatDateTime, getDecisionBadgeStatus, calculateDuration, formatCurrency } from '../../utils/helpers'
 
 const { Text } = Typography
 
@@ -34,9 +34,11 @@ const TaskCard = ({ task }) => {
   // Status icon mapping
   const statusIcons = {
     PENDING: <ClockCircleOutlined />,
+    WAITING_PAYMENT: <ClockCircleOutlined />,
     RUNNING: <SyncOutlined spin />,
     COMPLETED: <CheckCircleOutlined />,
     FAILED: <CloseCircleOutlined />,
+    PAYMENT_FAILED: <CloseCircleOutlined />,
   }
 
   // Depth description mapping
@@ -53,6 +55,18 @@ const TaskCard = ({ task }) => {
     if (!completedAt) return null
     const createdAt = task.createdAt || task.created_at
     return calculateDuration(createdAt, completedAt)
+  }
+
+  const paymentStatus = task.paymentStatus || task.payment_status
+  const paymentAmountCents = task.amountCents ?? task.amount_cents
+  const paymentCurrency = task.currency || task.currency_code || 'usd'
+  const paymentStatusColor = {
+    FREE_GRANTED: 'success',
+    WAITING_PAYMENT: 'warning',
+    PROCESSING: 'processing',
+    PAID: 'success',
+    FAILED: 'error',
+    REFUNDED: 'default',
   }
 
   return (
@@ -99,7 +113,7 @@ const TaskCard = ({ task }) => {
           </Text>
         </div>
         <Tag
-          icon={statusIcons[task.status]}
+          icon={statusIcons[task.status] || <ClockCircleOutlined />}
           color={getStatusColor(task.status)}
           style={{
             fontSize: 11,
@@ -112,7 +126,7 @@ const TaskCard = ({ task }) => {
             margin: 0,
           }}
         >
-          {task.status}
+          {(task.status || '').replace(/_/g, ' ')}
         </Tag>
       </div>
 
@@ -182,6 +196,27 @@ const TaskCard = ({ task }) => {
               {getDuration() || 'N/A'}
             </Text>
           </div>
+
+          {paymentStatus && (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, color: '#9ca3af', minWidth: 100 }}>
+                Payment:
+              </Text>
+              <Space size={6}>
+                <Tag
+                  color={paymentStatusColor[paymentStatus] || 'default'}
+                  style={{ margin: 0, textTransform: 'capitalize' }}
+                >
+                  {paymentStatus.replace(/_/g, ' ').toLowerCase()}
+                </Tag>
+                {paymentAmountCents !== undefined && (
+                  <Text style={{ fontSize: 12, color: '#111827' }}>
+                    {formatCurrency(paymentAmountCents, paymentCurrency)}
+                  </Text>
+                )}
+              </Space>
+            </div>
+          )}
 
           {/* Analysts - Single line with ellipsis */}
           <div style={{ display: 'flex', alignItems: 'center' }}>

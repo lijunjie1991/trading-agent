@@ -48,6 +48,37 @@ public class Task {
     @Builder.Default
     private String status = "PENDING"; // PENDING, RUNNING, COMPLETED, FAILED
 
+    @Column(name = "payment_status", length = 30)
+    @Builder.Default
+    private String paymentStatus = "FREE_GRANTED";
+
+    @Column(name = "payment_intent_id", length = 255)
+    private String paymentIntentId;
+
+    @Column(name = "amount_cents")
+    @Builder.Default
+    private Integer amountCents = 0;
+
+    @Column(name = "currency", length = 10)
+    @Builder.Default
+    private String currency = "usd";
+
+    @Column(name = "pricing_strategy_code", length = 50)
+    private String pricingStrategyCode;
+
+    @Column(name = "pricing_snapshot", columnDefinition = "JSON")
+    private String pricingSnapshot;
+
+    @Column(name = "charge_type", length = 20)
+    @Builder.Default
+    private String chargeType = "FREE";
+
+    @Column(name = "paid_at")
+    private LocalDateTime paidAt;
+
+    @Column(name = "queued_at")
+    private LocalDateTime queuedAt;
+
     @Column(name = "final_decision", length = 50)
     private String finalDecision;
 

@@ -14,6 +14,8 @@ class TaskService {
       analysisDate: taskData.analysisDate,
       selectedAnalysts: taskData.selectedAnalysts,
       researchDepth: taskData.researchDepth,
+      pricingStrategyCode: taskData.pricingStrategyCode,
+      clientReferenceId: taskData.clientReferenceId,
     })
     // Backend returns: { code, message, data, timestamp }
     return response.data.data || response.data
@@ -73,6 +75,21 @@ class TaskService {
         failed: 0,
       }
     }
+  }
+
+  async getBillingProfile() {
+    const response = await api.get(API_ENDPOINTS.BILLING_PROFILE)
+    return response.data.data || response.data
+  }
+
+  async getPriceQuote(quoteRequest) {
+    const response = await api.post(API_ENDPOINTS.PRICE_QUOTE, quoteRequest)
+    return response.data.data || response.data
+  }
+
+  async confirmPayment(paymentIntentId) {
+    const response = await api.post(API_ENDPOINTS.CONFIRM_PAYMENT, { paymentIntentId })
+    return response.data.data || response.data
   }
 }
 

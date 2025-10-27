@@ -17,6 +17,11 @@ export const API_ENDPOINTS = {
   LIST_TASKS: '/api/v1/tasks',
   GET_TASK_REPORTS: '/api/v1/tasks/:taskId/reports',
   CANCEL_TASK: '/api/v1/tasks/:taskId/cancel',
+  BILLING_PROFILE: '/api/v1/tasks/billing/profile',
+  PRICE_QUOTE: '/api/v1/tasks/price-quote',
+
+  // Payments
+  CONFIRM_PAYMENT: '/api/v1/payments/confirm',
 
   // WebSocket
   WS_ANALYSIS: '/ws/analysis/:taskId',
@@ -25,10 +30,27 @@ export const API_ENDPOINTS = {
 // Task Status
 export const TASK_STATUS = {
   PENDING: 'pending',
+  WAITING_PAYMENT: 'waiting_payment',
   RUNNING: 'running',
   COMPLETED: 'completed',
   FAILED: 'failed',
   CANCELLED: 'cancelled',
+  PAYMENT_FAILED: 'payment_failed',
+}
+
+// Payment Status
+export const PAYMENT_STATUS = {
+  FREE_GRANTED: 'FREE_GRANTED',
+  WAITING_PAYMENT: 'WAITING_PAYMENT',
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  REFUNDED: 'REFUNDED',
+}
+
+export const CHARGE_TYPE = {
+  FREE: 'FREE',
+  ONE_TIME: 'ONE_TIME',
 }
 
 // Agent Status

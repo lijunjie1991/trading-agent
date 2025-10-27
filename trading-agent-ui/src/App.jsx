@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import TaskNew from './pages/TaskNew'
 import TaskDetail from './pages/TaskDetail'
 import TaskHistory from './pages/TaskHistory'
+import TaskCheckout from './pages/TaskCheckout'
 
 function App() {
   const { token } = useSelector((state) => state.auth)
@@ -22,6 +23,7 @@ function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="tasks/new" element={<TaskNew />} />
         <Route path="tasks/:taskId" element={<TaskDetail />} />
+        <Route path="tasks/checkout" element={<TaskCheckout />} />
         <Route path="tasks" element={<TaskHistory />} />
       </Route>
 

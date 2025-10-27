@@ -1,12 +1,13 @@
-import { Form, Input, DatePicker, Select, Checkbox, Button, Card, Typography } from 'antd'
+import { Form, Input, DatePicker, Select, Checkbox, Button, Card, Typography, Alert, Space } from 'antd'
 import { RocketOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
+import { formatCurrency } from '../../utils/helpers'
 
 const { Title } = Typography
 const { Option } = Select
 
-const TaskForm = ({ onSubmit, loading }) => {
+const TaskForm = ({ onSubmit, loading, onValuesChange, priceQuote, billingProfile }) => {
   const [form] = Form.useForm()
 
   const analystOptions = [
@@ -32,10 +33,39 @@ const TaskForm = ({ onSubmit, loading }) => {
         <RocketOutlined /> Start New Analysis
       </Title>
 
+      <Space direction="vertical" size={12} style={{ display: 'block', marginBottom: 16 }}>
+        {billingProfile && (
+          <Alert
+            type={billingProfile.freeTasksRemaining > 0 ? 'success' : 'warning'}
+            showIcon
+            message={`Free tasks remaining: ${billingProfile.freeTasksRemaining ?? 0} / ${billingProfile.freeTasksTotal ?? 0}`}
+            description={billingProfile.freeTasksRemaining > 0
+              ? 'This task will run within your free quota.'
+              : 'Free quota exhausted. New tasks will incur charges based on the selected configuration.'}
+          />
+        )}
+
+        {priceQuote && (
+          <Alert
+            type={priceQuote.freeQuotaAvailable ? 'info' : 'warning'}
+            showIcon
+            message={priceQuote.freeQuotaAvailable
+              ? 'This configuration still consumes free quota.'
+              : `Estimated cost: ${formatCurrency(priceQuote.amountCents, priceQuote.currency)}`}
+            description={priceQuote.pricingBreakdown && (
+              <span style={{ display: 'block' }}>
+                Depth multiplier: {priceQuote.pricingBreakdown.depthMultiplier} ×, analysts selected: {priceQuote.pricingBreakdown.analystCount}
+              </span>
+            )}
+          />
+        )}
+      </Space>
+
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
+        onValuesChange={onValuesChange}
         initialValues={{
           analysisDate: dayjs(),
           researchDepth: 1,
