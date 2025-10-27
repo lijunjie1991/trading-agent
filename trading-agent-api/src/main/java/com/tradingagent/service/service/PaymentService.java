@@ -17,9 +17,11 @@ import com.tradingagent.service.exception.BusinessException;
 import com.tradingagent.service.repository.PaymentRepository;
 import com.tradingagent.service.repository.PricingStrategyRepository;
 import com.tradingagent.service.repository.TaskRepository;
+import com.tradingagent.service.service.event.TaskPaymentConfirmedEvent;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -36,8 +38,8 @@ public class PaymentService {
     private final TaskRepository taskRepository;
     private final PricingStrategyRepository pricingStrategyRepository;
     private final QuotaService quotaService;
-    private final TaskExecutionService taskExecutionService;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public TaskPaymentInfo initiatePayment(User user,
@@ -154,14 +156,7 @@ public class PaymentService {
         PricingStrategy strategy = pricingStrategyRepository.findByStrategyCode(task.getPricingStrategyCode())
                 .orElse(null);
         quotaService.incrementPaidTaskUsage(payment.getUser(), strategy);
-
-        taskExecutionService.submitTaskToPython(
-                task,
-                task.getTicker(),
-                task.getAnalysisDate().toString(),
-                readAnalysts(task.getSelectedAnalysts()),
-                task.getResearchDepth()
-        );
+        publishPaymentConfirmedEvent(task);
         return task;
     }
 
@@ -201,5 +196,16 @@ public class PaymentService {
             log.warn("Failed to parse analysts json: {}", json);
             return java.util.Collections.emptyList();
         }
+    }
+
+    private void publishPaymentConfirmedEvent(Task task) {
+        eventPublisher.publishEvent(TaskPaymentConfirmedEvent.builder()
+                .taskDbId(task.getId())
+                .taskId(task.getTaskId())
+                .ticker(task.getTicker())
+                .analysisDate(task.getAnalysisDate().toString())
+                .selectedAnalysts(readAnalysts(task.getSelectedAnalysts()))
+                .researchDepth(task.getResearchDepth())
+                .build());
     }
 }
