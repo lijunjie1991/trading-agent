@@ -23,3 +23,5 @@ logs/
 
 ### VS Code ###
 .vscode/
+
+.serena/

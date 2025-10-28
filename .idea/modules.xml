@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/TradingAgents.iml" filepath="$PROJECT_DIR$/.idea/TradingAgents.iml" />
+      <module fileurl="file://$PROJECT_DIR$/trading-agent-engine/trading-agent-engine.iml" filepath="$PROJECT_DIR$/trading-agent-engine/trading-agent-engine.iml" />
+      <module fileurl="file://$PROJECT_DIR$/trading-agent-ui/trading-agent-ui.iml" filepath="$PROJECT_DIR$/trading-agent-ui/trading-agent-ui.iml" />
     </modules>
   </component>
 </project>
