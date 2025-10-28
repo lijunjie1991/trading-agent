@@ -97,9 +97,6 @@ public class Task {
     @Column(name = "pricing_snapshot", columnDefinition = "TEXT")
     private String pricingSnapshot;
 
-    @Column(name = "stripe_session_id", length = 255)
-    private String stripeSessionId;
-
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_id")
     private TaskPayment payment;

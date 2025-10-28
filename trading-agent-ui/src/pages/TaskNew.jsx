@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { message } from 'antd'
 import TaskForm from '../components/Task/TaskForm'
+import PaymentModal from '../components/Payment/PaymentModal'
 import {
   startAnalysis,
   setCurrentTaskId,
   fetchBillingSummary,
   fetchTaskQuote,
-  clearCheckoutState,
+  fetchTask,
+  clearPaymentState,
 } from '../store/slices/taskSlice'
-import { getStripe } from '../utils/stripe'
 
 const TaskNew = () => {
   const navigate = useNavigate()
@@ -20,17 +21,23 @@ const TaskNew = () => {
     currentTaskId,
     error,
     paymentRequired,
-    checkoutSessionId,
-    checkoutUrl,
+    paymentClientSecret,
+    pendingPaymentTaskId,
+    currentTask,
     billingSummary,
     billingLoading,
     quote,
     quoteLoading,
   } = useSelector((state) => state.task)
+  const billingAmount = currentTask?.billingAmount ?? currentTask?.billing_amount ?? quote?.totalAmount ?? quote?.total_amount ?? null
+  const billingCurrency = currentTask?.billingCurrency ?? currentTask?.billing_currency ?? billingSummary?.currency ?? 'USD'
   const isSubmittingRef = useRef(false)
   const quoteTimerRef = useRef(null)
   const lastQuoteRef = useRef(null)
+  const lastPaymentSecretRef = useRef(null)
+  const paymentPresentationRef = useRef(false)
   const [formValues, setFormValues] = useState(null)
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false)
 
   // Clear currentTaskId when entering this page
   useEffect(() => {
@@ -55,37 +62,26 @@ const TaskNew = () => {
   }, [error])
 
   useEffect(() => {
-    if (!paymentRequired || !isSubmittingRef.current) {
+    if (!paymentRequired || !pendingPaymentTaskId) {
+      setPaymentModalVisible(false)
+      paymentPresentationRef.current = false
+      lastPaymentSecretRef.current = null
       return
     }
-    if (!checkoutSessionId && !checkoutUrl) {
+    if (!paymentClientSecret) {
       return
     }
-
-    const redirect = async () => {
-      message.info('Redirecting to Stripe for payment...')
-      try {
-        const stripe = await getStripe()
-        const { error: stripeError } = await stripe.redirectToCheckout({ sessionId: checkoutSessionId })
-        if (stripeError && checkoutUrl) {
-          window.location.assign(checkoutUrl)
-        } else if (stripeError) {
-          message.error(stripeError.message || 'Unable to redirect to Stripe checkout')
-        }
-      } catch (stripeInitError) {
-        if (checkoutUrl) {
-          window.location.assign(checkoutUrl)
-        } else {
-          message.error(stripeInitError.message || 'Stripe configuration error')
-        }
-      } finally {
-        isSubmittingRef.current = false
-        dispatch(clearCheckoutState())
-      }
+    if (lastPaymentSecretRef.current !== paymentClientSecret) {
+      lastPaymentSecretRef.current = paymentClientSecret
+      paymentPresentationRef.current = false
     }
-
-    redirect()
-  }, [paymentRequired, checkoutSessionId, checkoutUrl, dispatch])
+    if (!paymentPresentationRef.current) {
+      message.info('Payment is required to start this analysis.')
+      paymentPresentationRef.current = true
+      setPaymentModalVisible(true)
+    }
+    isSubmittingRef.current = false
+  }, [paymentRequired, paymentClientSecret, pendingPaymentTaskId])
 
   useEffect(() => {
     if (!formValues) {
@@ -138,12 +134,42 @@ const TaskNew = () => {
     setFormValues(normalized)
   }, [])
 
+  const handlePaymentSuccess = useCallback(async () => {
+    const taskId = pendingPaymentTaskId
+    setPaymentModalVisible(false)
+    paymentPresentationRef.current = false
+    lastPaymentSecretRef.current = null
+    isSubmittingRef.current = false
+    message.success('Payment successful! Your analysis will start shortly.')
+    if (taskId) {
+      await dispatch(fetchTask(taskId))
+      navigate(`/tasks/${taskId}`)
+    }
+    dispatch(clearPaymentState())
+    dispatch(fetchBillingSummary())
+  }, [dispatch, navigate, pendingPaymentTaskId])
+
+  const handlePaymentCancel = useCallback(() => {
+    const taskId = pendingPaymentTaskId
+    setPaymentModalVisible(false)
+    paymentPresentationRef.current = true
+    isSubmittingRef.current = false
+    dispatch(clearPaymentState())
+    if (taskId) {
+      message.info('Payment pending. You can complete it anytime from the task details page.')
+      navigate(`/tasks/${taskId}`)
+    }
+  }, [dispatch, navigate, pendingPaymentTaskId])
+
   useEffect(() => () => {
     if (quoteTimerRef.current) {
       clearTimeout(quoteTimerRef.current)
     }
     lastQuoteRef.current = null
-    dispatch(clearCheckoutState())
+    lastPaymentSecretRef.current = null
+    paymentPresentationRef.current = false
+    setPaymentModalVisible(false)
+    dispatch(clearPaymentState())
   }, [dispatch])
 
   return (
@@ -156,6 +182,16 @@ const TaskNew = () => {
         quote={quote}
         quoteLoading={quoteLoading}
         onFormChange={handleFormChange}
+      />
+      <PaymentModal
+        key={paymentClientSecret || 'payment-modal'}
+        open={paymentModalVisible}
+        clientSecret={paymentClientSecret}
+        taskId={pendingPaymentTaskId}
+        amount={billingAmount}
+        currency={billingCurrency}
+        onSuccess={handlePaymentSuccess}
+        onCancel={handlePaymentCancel}
       />
     </div>
   )

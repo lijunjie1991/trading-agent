@@ -42,8 +42,8 @@ public class TaskPaymentService {
             payment.setIsFree(Boolean.FALSE);
         }
         payment.setPaidAt(null);
-        payment.setStripeSessionId(null);
         payment.setStripePaymentIntentId(null);
+        payment.setStripeClientSecret(null);
         payment.setAmount(quote.getTotalAmount());
         payment.setCurrency(quote.getCurrency());
         payment.setPricingSnapshot(pricingSnapshot);
@@ -60,15 +60,6 @@ public class TaskPaymentService {
     }
 
     @Transactional(readOnly = true)
-    public TaskPayment getRequiredPaymentBySession(String sessionId) {
-        TaskPayment payment = taskPaymentRepository.findByStripeSessionId(sessionId);
-        if (payment == null) {
-            throw new BusinessException(ResultCode.PAYMENT_NOT_FOUND, "Payment not found for session: " + sessionId);
-        }
-        return payment;
-    }
-
-    @Transactional(readOnly = true)
     public TaskPayment getRequiredPaymentByTaskId(String taskId) {
         TaskPayment payment = taskPaymentRepository.findByTaskTaskId(taskId);
         if (payment == null) {
@@ -78,19 +69,17 @@ public class TaskPaymentService {
     }
 
     @Transactional
-    public void attachStripeSession(TaskPayment payment, String sessionId, String paymentIntentId) {
+    public void attachStripeIntent(TaskPayment payment, String paymentIntentId, String clientSecret) {
         if (payment == null) {
             throw new BusinessException(ResultCode.PAYMENT_NOT_FOUND, "Payment entity is required");
         }
-        payment.setStripeSessionId(sessionId);
         if (paymentIntentId != null && !paymentIntentId.isBlank()) {
             payment.setStripePaymentIntentId(paymentIntentId);
         }
+        if (clientSecret != null && !clientSecret.isBlank()) {
+            payment.setStripeClientSecret(clientSecret);
+        }
         taskPaymentRepository.save(payment);
-
-        Task task = payment.getTask();
-        task.setStripeSessionId(sessionId);
-        taskRepository.save(task);
     }
 
     @Transactional
@@ -104,6 +93,7 @@ public class TaskPaymentService {
         }
         payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(LocalDateTime.now());
+        payment.setStripeClientSecret(null);
         taskPaymentRepository.save(payment);
 
         Task task = payment.getTask();
@@ -121,6 +111,7 @@ public class TaskPaymentService {
         }
         payment.setStatus(PaymentStatus.PAYMENT_FAILED);
         payment.setPaidAt(null);
+        payment.setStripeClientSecret(null);
         taskPaymentRepository.save(payment);
 
         Task task = payment.getTask();
@@ -138,11 +129,12 @@ public class TaskPaymentService {
         }
         payment.setStatus(PaymentStatus.PAYMENT_EXPIRED);
         payment.setPaidAt(null);
+        payment.setStripeClientSecret(null);
         taskPaymentRepository.save(payment);
 
         Task task = payment.getTask();
         task.setPaymentStatus(PaymentStatus.PAYMENT_EXPIRED);
-        task.setErrorMessage("Payment session expired before completion");
+        task.setErrorMessage("Payment intent canceled before completion");
         taskRepository.save(task);
     }
 
@@ -155,11 +147,16 @@ public class TaskPaymentService {
     }
 
     @Transactional
-    public void updatePaymentIntentId(TaskPayment payment, String paymentIntentId) {
-        if (payment == null || paymentIntentId == null || paymentIntentId.isBlank()) {
+    public void updatePaymentIntent(TaskPayment payment, String paymentIntentId, String clientSecret) {
+        if (payment == null) {
             return;
         }
-        payment.setStripePaymentIntentId(paymentIntentId);
+        if (paymentIntentId != null && !paymentIntentId.isBlank()) {
+            payment.setStripePaymentIntentId(paymentIntentId);
+        }
+        if (clientSecret != null && !clientSecret.isBlank()) {
+            payment.setStripeClientSecret(clientSecret);
+        }
         taskPaymentRepository.save(payment);
     }
 }

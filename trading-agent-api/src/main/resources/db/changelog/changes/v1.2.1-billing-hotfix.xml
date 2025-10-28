@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ChangeSet 12: Allow nullable stripe_session_id in task_payments -->
+    <changeSet id="12-task-payments-allow-null-session" author="Codex">
+        <comment>When initializing a payment before creating the Stripe session, stripe_session_id can be null.</comment>
+        <sql>
+            ALTER TABLE task_payments
+            MODIFY COLUMN stripe_session_id VARCHAR(255) NULL;
+        </sql>
+        <rollback>
+            ALTER TABLE task_payments
+            MODIFY COLUMN stripe_session_id VARCHAR(255) NOT NULL;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -8,6 +8,7 @@ import MessagePanel from '../components/Task/MessagePanel'
 import CompactHeader from '../components/Task/CompactHeader'
 import StatsSidebar from '../components/Task/StatsSidebar'
 import Loading from '../components/Common/Loading'
+import PaymentModal from '../components/Payment/PaymentModal'
 import api from '../services/api'
 import {
   updateStats,
@@ -15,9 +16,8 @@ import {
   fetchTask,
   fetchTaskMessages,
   retryTaskPayment,
-  clearCheckoutState,
+  clearPaymentState,
 } from '../store/slices/taskSlice'
-import { getStripe } from '../utils/stripe'
 import './TaskDetail.css'
 
 const { Title, Text } = Typography
@@ -39,7 +39,10 @@ const TaskDetail = () => {
   const [showReportsModal, setShowReportsModal] = useState(false)
   const [reports, setReports] = useState([])
   const [loadingReports, setLoadingReports] = useState(false)
-  const paymentRedirectRef = useRef(false)
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false)
+  const paymentPresentationRef = useRef(false)
+  const lastPaymentSecretRef = useRef(null)
+  const ensureClientSecretRef = useRef(false)
 
   const {
     currentTask,
@@ -49,8 +52,7 @@ const TaskDetail = () => {
     loading,
     lastTimestamp,
     paymentRequired,
-    checkoutSessionId,
-    checkoutUrl,
+    paymentClientSecret,
     pendingPaymentTaskId,
     submitting,
   } = useSelector((state) => state.task)
@@ -58,6 +60,8 @@ const TaskDetail = () => {
   const isProcessing = currentTask?.status === 'RUNNING' || currentTask?.status === 'PENDING'
   const paymentStatus = (currentTask?.paymentStatus || currentTask?.payment_status || '').toUpperCase()
   const needsPayment = ['AWAITING_PAYMENT', 'PAYMENT_FAILED', 'PAYMENT_EXPIRED'].includes(paymentStatus)
+  const billingAmount = currentTask?.billingAmount ?? currentTask?.billing_amount ?? null
+  const billingCurrency = currentTask?.billingCurrency ?? currentTask?.billing_currency ?? 'USD'
 
   useEffect(() => {
     dispatch(resetTaskState())
@@ -69,8 +73,11 @@ const TaskDetail = () => {
 
     return () => {
       stopPolling()
-      dispatch(clearCheckoutState())
-      paymentRedirectRef.current = false
+      setPaymentModalVisible(false)
+      paymentPresentationRef.current = false
+      lastPaymentSecretRef.current = null
+      ensureClientSecretRef.current = false
+      dispatch(clearPaymentState())
     }
   }, [taskId, dispatch])
 
@@ -101,40 +108,36 @@ const TaskDetail = () => {
 
   useEffect(() => {
     if (!paymentRequired || pendingPaymentTaskId !== taskId) {
+      setPaymentModalVisible(false)
+      paymentPresentationRef.current = false
+      lastPaymentSecretRef.current = null
+      ensureClientSecretRef.current = false
       return
     }
-    if (!checkoutSessionId && !checkoutUrl) {
-      return
-    }
-    if (paymentRedirectRef.current) {
-      return
-    }
-    paymentRedirectRef.current = true
 
-    const redirect = async () => {
-      message.info('Redirecting to Stripe to complete payment...')
-      try {
-        const stripe = await getStripe()
-        const { error: stripeError } = await stripe.redirectToCheckout({ sessionId: checkoutSessionId })
-        if (stripeError && checkoutUrl) {
-          window.location.assign(checkoutUrl)
-        } else if (stripeError) {
-          message.error(stripeError.message || 'Unable to redirect to Stripe checkout')
-        }
-      } catch (err) {
-        if (checkoutUrl) {
-          window.location.assign(checkoutUrl)
-        } else {
-          message.error(err.message || 'Stripe configuration error')
-        }
-      } finally {
-        dispatch(clearCheckoutState())
-        paymentRedirectRef.current = false
+    if (!paymentClientSecret) {
+      if (!ensureClientSecretRef.current && !submitting) {
+        ensureClientSecretRef.current = true
+        dispatch(retryTaskPayment(taskId)).catch(() => {
+          ensureClientSecretRef.current = false
+        })
       }
+      return
     }
 
-    redirect()
-  }, [paymentRequired, checkoutSessionId, checkoutUrl, pendingPaymentTaskId, taskId, dispatch])
+    ensureClientSecretRef.current = false
+
+    if (lastPaymentSecretRef.current !== paymentClientSecret) {
+      lastPaymentSecretRef.current = paymentClientSecret
+      paymentPresentationRef.current = false
+    }
+
+    if (!paymentPresentationRef.current) {
+      message.info('Payment is required to continue this analysis.')
+      paymentPresentationRef.current = true
+      setPaymentModalVisible(true)
+    }
+  }, [paymentRequired, paymentClientSecret, pendingPaymentTaskId, taskId, dispatch, submitting])
 
   useEffect(() => {
     if (currentTask) {
@@ -173,9 +176,27 @@ const TaskDetail = () => {
   const handleRetryPayment = async () => {
     try {
       await dispatch(retryTaskPayment(taskId)).unwrap()
+      paymentPresentationRef.current = false
+      lastPaymentSecretRef.current = null
     } catch (err) {
-      message.error(err || 'Unable to create new checkout session')
+      message.error(err || 'Unable to refresh payment intent')
     }
+  }
+
+  const handlePaymentSuccess = async () => {
+    setPaymentModalVisible(false)
+    paymentPresentationRef.current = false
+    lastPaymentSecretRef.current = null
+    ensureClientSecretRef.current = false
+    message.success('Payment successful! Your analysis will resume shortly.')
+    dispatch(clearPaymentState())
+    await dispatch(fetchTask(taskId))
+  }
+
+  const handlePaymentCancel = () => {
+    setPaymentModalVisible(false)
+    paymentPresentationRef.current = true
+    message.info('Payment is still pending. You can retry whenever you are ready.')
   }
 
   const renderReport = (report) => {
@@ -317,6 +338,17 @@ const TaskDetail = () => {
           />
         )}
       </Modal>
+
+      <PaymentModal
+        key={paymentClientSecret || 'payment-modal'}
+        open={paymentModalVisible}
+        clientSecret={paymentClientSecret}
+        taskId={pendingPaymentTaskId || taskId}
+        amount={billingAmount}
+        currency={billingCurrency}
+        onSuccess={handlePaymentSuccess}
+        onCancel={handlePaymentCancel}
+      />
     </div>
   )
 }

@@ -10,8 +10,6 @@ public interface TaskPaymentRepository extends JpaRepository<TaskPayment, Long> 
 
     TaskPayment findByTaskTaskId(String taskId);
 
-    TaskPayment findByStripeSessionId(String stripeSessionId);
-
     TaskPayment findByStripePaymentIntentId(String paymentIntentId);
 
     Long countByUserIdAndStatus(Long userId, PaymentStatus status);

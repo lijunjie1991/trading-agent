@@ -3,14 +3,15 @@ package com.tradingagent.service.service;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
-import com.stripe.model.checkout.Session;
+import com.stripe.model.PaymentIntent;
 import com.stripe.net.RequestOptions;
 import com.stripe.net.Webhook;
-import com.stripe.param.checkout.SessionCreateParams;
+import com.stripe.param.PaymentIntentCancelParams;
+import com.stripe.param.PaymentIntentCreateParams;
 import com.tradingagent.service.common.ResultCode;
 import com.tradingagent.service.config.StripeProperties;
 import com.tradingagent.service.dto.PricingQuote;
-import com.tradingagent.service.dto.StripeCheckoutSession;
+import com.tradingagent.service.dto.StripePaymentIntent;
 import com.tradingagent.service.entity.Task;
 import com.tradingagent.service.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +20,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -29,62 +28,70 @@ public class StripeClient {
 
   private final StripeProperties stripeProperties;
 
-  public StripeCheckoutSession createCheckoutSession(
-      Task task, PricingQuote quote, String successUrl, String cancelUrl) {
+  public StripePaymentIntent createPaymentIntent(Task task, PricingQuote quote) {
     try {
-      SessionCreateParams.LineItem.PriceData priceData =
-          SessionCreateParams.LineItem.PriceData.builder()
+      PaymentIntentCreateParams params =
+          PaymentIntentCreateParams.builder()
               .setCurrency(quote.getCurrency().toLowerCase())
-              .setUnitAmount(convertAmountToMinorUnits(quote.getTotalAmount()))
-              .setProductData(
-                  SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                      .setName(buildProductName(task, quote))
-                      .build())
-              .build();
-
-      Map<String, String> metadata = new HashMap<>();
-      metadata.put("taskId", task.getTaskId());
-      metadata.put("userId", task.getUser().getId().toString());
-      metadata.put("ticker", task.getTicker());
-
-      SessionCreateParams.PaymentIntentData paymentIntentData =
-          SessionCreateParams.PaymentIntentData.builder()
+              .setAmount(convertAmountToMinorUnits(quote.getTotalAmount()))
+              .setDescription(buildProductDescription(task, quote))
               .putMetadata("taskId", task.getTaskId())
               .putMetadata("userId", task.getUser().getId().toString())
-              .build();
-
-      SessionCreateParams params =
-          SessionCreateParams.builder()
-              .setMode(SessionCreateParams.Mode.PAYMENT)
-              .setSuccessUrl(successUrl != null ? successUrl : buildSuccessUrl())
-              .setCancelUrl(cancelUrl != null ? cancelUrl : buildCancelUrl())
-              .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-              .addLineItem(
-                  SessionCreateParams.LineItem.builder()
-                      .setQuantity(1L)
-                      .setPriceData(priceData)
+              .putMetadata("ticker", task.getTicker())
+              .setAutomaticPaymentMethods(
+                  PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                      .setEnabled(true)
                       .build())
-              .putAllMetadata(metadata)
-              .setClientReferenceId(task.getTaskId())
-              .setCustomerEmail(task.getUser().getEmail())
-              .setPaymentIntentData(paymentIntentData)
               .build();
 
-      RequestOptions options =
-          RequestOptions.builder().setApiKey(stripeProperties.getSecretKey()).build();
+      RequestOptions options = buildRequestOptions();
+      PaymentIntent paymentIntent = PaymentIntent.create(params, options);
 
-      Session session = Session.create(params, options);
-
-      return StripeCheckoutSession.builder()
-          .sessionId(session.getId())
-          .paymentIntentId(extractPaymentIntentId(session))
-          .url(session.getUrl())
+      return StripePaymentIntent.builder()
+          .paymentIntentId(paymentIntent.getId())
+          .clientSecret(paymentIntent.getClientSecret())
           .build();
     } catch (StripeException e) {
-      log.error("Failed to create Stripe checkout session: {}", e.getMessage(), e);
+      log.error("Failed to create Stripe payment intent: {}", e.getMessage(), e);
       throw new BusinessException(
           ResultCode.PAYMENT_PROVIDER_ERROR,
-          "Unable to create checkout session: " + e.getMessage());
+          "Unable to create payment intent: " + e.getMessage());
+    }
+  }
+
+  public void cancelPaymentIntent(String paymentIntentId) {
+    if (paymentIntentId == null || paymentIntentId.isBlank()) {
+      return;
+    }
+    try {
+      PaymentIntent paymentIntent =
+          PaymentIntent.retrieve(paymentIntentId, buildRequestOptions());
+      if (paymentIntent == null) {
+        return;
+      }
+      switch (paymentIntent.getStatus()) {
+        case "succeeded", "canceled" -> {
+          // Nothing to cancel
+        }
+        default -> paymentIntent.cancel(
+            PaymentIntentCancelParams.builder().build(), buildRequestOptions());
+      }
+    } catch (StripeException e) {
+      log.warn("Failed to cancel payment intent {}: {}", paymentIntentId, e.getMessage());
+    }
+  }
+
+  public String refreshClientSecret(String paymentIntentId) {
+    if (paymentIntentId == null || paymentIntentId.isBlank()) {
+      return null;
+    }
+    try {
+      PaymentIntent paymentIntent =
+          PaymentIntent.retrieve(paymentIntentId, buildRequestOptions());
+      return paymentIntent != null ? paymentIntent.getClientSecret() : null;
+    } catch (StripeException e) {
+      log.error("Failed to retrieve payment intent {}: {}", paymentIntentId, e.getMessage());
+      return null;
     }
   }
 
@@ -97,30 +104,14 @@ public class StripeClient {
     }
   }
 
-  private String buildProductName(Task task, PricingQuote quote) {
+  private RequestOptions buildRequestOptions() {
+    return RequestOptions.builder().setApiKey(stripeProperties.getSecretKey()).build();
+  }
+
+  private String buildProductDescription(Task task, PricingQuote quote) {
     return String.format(
         "Analysis for %s (Depth %d, Analysts %d)",
         task.getTicker(), quote.getResearchDepth(), quote.getAnalystCount());
-  }
-
-  private String buildSuccessUrl() {
-    return appendSessionPlaceholder(stripeProperties.getSuccessUrl());
-  }
-
-  private String buildCancelUrl() {
-    return appendSessionPlaceholder(stripeProperties.getCancelUrl());
-  }
-
-  private String appendSessionPlaceholder(String url) {
-    if (url == null || url.isBlank()) {
-      throw new BusinessException(
-          ResultCode.PAYMENT_PROVIDER_ERROR, "Stripe redirect URL is not configured");
-    }
-    if (url.contains("{CHECKOUT_SESSION_ID}")) {
-      return url;
-    }
-    String delimiter = url.contains("?") ? "&" : "?";
-    return url + delimiter + "session_id={CHECKOUT_SESSION_ID}";
   }
 
   private long convertAmountToMinorUnits(BigDecimal amount) {
@@ -128,17 +119,5 @@ public class StripeClient {
       return 0L;
     }
     return amount.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
-  }
-
-  private String extractPaymentIntentId(Session session) {
-    if (session == null) {
-      return null;
-    }
-    Object paymentIntentObj = session.getPaymentIntent();
-    return switch (paymentIntentObj) {
-      case null -> null;
-      case String paymentIntentId -> paymentIntentId;
-      default -> paymentIntentObj.toString();
-    };
   }
 }

@@ -5,8 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class StripeCheckoutSession {
-    private String sessionId;
+public class StripePaymentIntent {
     private String paymentIntentId;
-    private String url;
+    private String clientSecret;
 }

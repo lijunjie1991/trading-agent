@@ -53,8 +53,8 @@ const initialState = {
   quote: null,
   quoteLoading: false,
   paymentRequired: false,
-  checkoutSessionId: null,
-  checkoutUrl: null,
+  paymentIntentId: null,
+  paymentClientSecret: null,
   pendingPaymentTaskId: null,
   freeQuotaTotal: 0,
   freeQuotaRemaining: 0,
@@ -281,10 +281,10 @@ const taskSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
-    clearCheckoutState: (state) => {
+    clearPaymentState: (state) => {
       state.paymentRequired = false
-      state.checkoutSessionId = null
-      state.checkoutUrl = null
+      state.paymentIntentId = null
+      state.paymentClientSecret = null
       state.pendingPaymentTaskId = null
     },
   },
@@ -302,8 +302,8 @@ const taskSlice = createSlice({
       state.agentStatuses = initializeAgentStatuses()
       state.error = null
       state.paymentRequired = Boolean(payload.paymentRequired || payload.payment_required)
-      state.checkoutSessionId = payload.checkoutSessionId || payload.checkout_session_id || null
-      state.checkoutUrl = payload.checkoutUrl || payload.checkout_url || null
+      state.paymentIntentId = payload.paymentIntentId || payload.payment_intent_id || null
+      state.paymentClientSecret = payload.paymentClientSecret || payload.payment_client_secret || null
       state.pendingPaymentTaskId = state.paymentRequired ? taskId : null
       state.freeQuotaTotal = payload.freeQuotaTotal ?? payload.free_quota_total ?? state.freeQuotaTotal
       state.freeQuotaRemaining = payload.freeQuotaRemaining ?? payload.free_quota_remaining ?? state.freeQuotaRemaining
@@ -318,8 +318,8 @@ const taskSlice = createSlice({
       state.submitting = false
       state.error = action.payload
       state.paymentRequired = false
-      state.checkoutSessionId = null
-      state.checkoutUrl = null
+      state.paymentIntentId = null
+      state.paymentClientSecret = null
       state.pendingPaymentTaskId = null
     })
 
@@ -332,9 +332,10 @@ const taskSlice = createSlice({
       state.submitting = false
       const payload = action.payload || {}
       state.paymentRequired = Boolean(payload.paymentRequired || payload.payment_required || true)
-      state.checkoutSessionId = payload.checkoutSessionId || payload.checkout_session_id || null
-      state.checkoutUrl = payload.checkoutUrl || payload.checkout_url || null
-      state.pendingPaymentTaskId = payload.taskId || payload.task_id || state.pendingPaymentTaskId
+      state.paymentIntentId = payload.paymentIntentId || payload.payment_intent_id || null
+      state.paymentClientSecret = payload.paymentClientSecret || payload.payment_client_secret || null
+      const taskId = payload.taskId || payload.task_id || state.pendingPaymentTaskId
+      state.pendingPaymentTaskId = state.paymentRequired ? taskId : null
       state.freeQuotaTotal = payload.freeQuotaTotal ?? payload.free_quota_total ?? state.freeQuotaTotal
       state.freeQuotaRemaining = payload.freeQuotaRemaining ?? payload.free_quota_remaining ?? state.freeQuotaRemaining
       state.paidTaskCount = payload.paidTaskCount ?? payload.paid_task_count ?? state.paidTaskCount
@@ -360,6 +361,17 @@ const taskSlice = createSlice({
         const decision = task.finalDecision || task.final_decision || task.decision
         if (decision) {
           state.finalDecision = decision
+        }
+
+        const requiresPayment = Boolean(task.paymentRequired || task.payment_required)
+        state.paymentRequired = requiresPayment
+        state.paymentIntentId = task.paymentIntentId || task.payment_intent_id || null
+        state.paymentClientSecret = task.paymentClientSecret || task.payment_client_secret || null
+        if (requiresPayment) {
+          const pendingId = task.taskId || task.task_id || state.pendingPaymentTaskId
+          state.pendingPaymentTaskId = pendingId
+        } else {
+          state.pendingPaymentTaskId = null
         }
       }
 
@@ -502,7 +514,7 @@ export const {
   resetTaskState,
   clearMessages,
   clearError,
-  clearCheckoutState,
+  clearPaymentState,
 } = taskSlice.actions
 
 export default taskSlice.reducer

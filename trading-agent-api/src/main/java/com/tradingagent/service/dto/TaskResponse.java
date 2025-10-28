@@ -38,8 +38,8 @@ public class TaskResponse {
     private String billingCurrency;
     private Boolean freeTask;
     private Boolean paymentRequired;
-    private String checkoutSessionId;
-    private String checkoutUrl;
+    private String paymentIntentId;
+    private String paymentClientSecret;
     private Integer freeQuotaTotal;
     private Integer freeQuotaRemaining;
     private Integer paidTaskCount;

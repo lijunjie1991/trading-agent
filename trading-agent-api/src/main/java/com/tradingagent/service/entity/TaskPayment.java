@@ -32,11 +32,11 @@ public class TaskPayment {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "stripe_session_id", nullable = false, length = 255)
-    private String stripeSessionId;
-
     @Column(name = "stripe_payment_intent_id", length = 255)
     private String stripePaymentIntentId;
+
+    @Column(name = "stripe_client_secret", length = 255)
+    private String stripeClientSecret;
 
     @Column(name = "amount", precision = 10, scale = 2, nullable = false)
     private BigDecimal amount;

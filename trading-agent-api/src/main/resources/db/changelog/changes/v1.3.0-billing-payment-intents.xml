@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ChangeSet 13.1: Drop legacy checkout session index -->
+    <changeSet id="13.1-billing-drop-session-index" author="Codex">
+        <sql>
+            DROP INDEX idx_task_payments_session ON task_payments;
+        </sql>
+    </changeSet>
+
+    <!-- ChangeSet 13.2: Add payment intent client secret column -->
+    <changeSet id="13.2-billing-add-client-secret" author="Codex">
+        <sql>
+            ALTER TABLE task_payments
+            ADD COLUMN stripe_client_secret VARCHAR(255);
+        </sql>
+    </changeSet>
+
+    <!-- ChangeSet 13.3: Drop legacy session column from task_payments -->
+    <changeSet id="13.3-billing-drop-task-payments-session" author="Codex">
+        <sql>
+            ALTER TABLE task_payments
+            DROP COLUMN stripe_session_id;
+        </sql>
+    </changeSet>
+
+    <!-- ChangeSet 13.4: Drop legacy session column from tasks -->
+    <changeSet id="13.4-billing-drop-tasks-session" author="Codex">
+        <sql>
+            ALTER TABLE tasks
+            DROP COLUMN stripe_session_id;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
