@@ -28,7 +28,6 @@ This guide will help you get the TradingAgents frontend up and running in minute
    The default configuration points to `localhost:8080`. If your backend runs on a different host/port, edit `.env`:
    ```env
    VITE_API_BASE_URL=http://localhost:8080
-   VITE_WS_BASE_URL=ws://localhost:8080
    ```
 
 4. **Start the development server**:
@@ -245,7 +244,6 @@ npm run preview
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8080` |
-| `VITE_WS_BASE_URL` | WebSocket URL | `ws://localhost:8080` |
 
 ## Tech Stack
 

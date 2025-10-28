@@ -6,7 +6,6 @@ import com.tradingagent.service.dto.LoginRequest;
 import com.tradingagent.service.dto.RegisterRequest;
 import com.tradingagent.service.entity.User;
 import com.tradingagent.service.exception.BusinessException;
-import com.tradingagent.service.exception.ResourceNotFoundException;
 import com.tradingagent.service.repository.UserRepository;
 import com.tradingagent.service.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final PricingService pricingService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -34,10 +34,15 @@ public class AuthService {
             throw new BusinessException(ResultCode.EMAIL_ALREADY_EXISTS);
         }
 
+        int freeQuota = pricingService.getActiveStrategy().getFreeTasksPerUser();
+
         // Create new user
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .freeQuotaTotal(freeQuota)
+                .freeQuotaUsed(0)
+                .paidTaskCount(0)
                 .build();
 
         user = userRepository.save(user);

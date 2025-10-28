@@ -4,12 +4,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tradingagent.service.common.ResultCode;
 import com.tradingagent.service.dto.PageResponse;
+import com.tradingagent.service.dto.PricingQuote;
+import com.tradingagent.service.dto.StripeCheckoutSession;
 import com.tradingagent.service.dto.TaskQueryRequest;
 import com.tradingagent.service.dto.TaskRequest;
 import com.tradingagent.service.dto.TaskResponse;
 import com.tradingagent.service.entity.Report;
 import com.tradingagent.service.entity.Task;
+import com.tradingagent.service.entity.TaskPayment;
 import com.tradingagent.service.entity.User;
+import com.tradingagent.service.entity.enums.PaymentStatus;
 import com.tradingagent.service.exception.BusinessException;
 import com.tradingagent.service.exception.ResourceNotFoundException;
 import com.tradingagent.service.exception.UnauthorizedException;
@@ -29,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,14 +49,30 @@ public class TaskService {
     private final PythonServiceClient pythonServiceClient;
     private final AuthService authService;
     private final ObjectMapper objectMapper;
+    private final PricingService pricingService;
+    private final TaskBillingService taskBillingService;
+    private final TaskPaymentService taskPaymentService;
+    private final StripeClient stripeClient;
 
     public TaskResponse submitTask(TaskRequest request) {
         User currentUser = authService.getCurrentUser();
 
+        // Determine pricing and quota information
+        var strategy = pricingService.getActiveStrategy();
+        PricingQuote pricingQuote = pricingService.calculateQuote(
+                strategy,
+                request.getResearchDepth(),
+                request.getSelectedAnalysts()
+        );
+        boolean hasFreeQuota = taskBillingService.hasRemainingFreeQuota(currentUser);
+        int remainingFreeBefore = taskBillingService.getRemainingFreeQuota(currentUser);
+        boolean zeroPriced = pricingQuote.getTotalAmount().compareTo(java.math.BigDecimal.ZERO) <= 0;
+        boolean useFreeQuota = hasFreeQuota || zeroPriced;
+        String pricingSnapshot = useFreeQuota ? null : taskBillingService.buildPricingSnapshot(pricingQuote);
+
         // Generate taskId first
         String taskId = java.util.UUID.randomUUID().toString();
 
-        // Save task to database BEFORE submitting to Python
         Task task = Task.builder()
                 .taskId(taskId)
                 .user(currentUser)
@@ -60,37 +81,95 @@ public class TaskService {
                 .selectedAnalysts(toJson(request.getSelectedAnalysts()))
                 .researchDepth(request.getResearchDepth())
                 .status("PENDING")
+                .paymentStatus(useFreeQuota ? PaymentStatus.FREE : PaymentStatus.AWAITING_PAYMENT)
+                .billingAmount(useFreeQuota ? java.math.BigDecimal.ZERO : pricingQuote.getTotalAmount())
+                .billingCurrency(strategy.getCurrency())
+                .isFreeTask(useFreeQuota)
+                .pricingSnapshot(pricingSnapshot)
                 .build();
 
         task = taskRepository.save(task);
         log.info("Task created in database: {}", taskId);
 
-        // Submit task to Python service with the generated taskId
-        try {
-            Map<String, Object> pythonResponse = pythonServiceClient
-                    .submitAnalysisTask(
-                            taskId,
-                            request.getTicker(),
-                            request.getAnalysisDate(),
-                            request.getSelectedAnalysts(),
-                            request.getResearchDepth()
-                    )
-                    .block();
+        StripeCheckoutSession checkoutSession = null;
 
-            if (pythonResponse == null) {
-                throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR, "Failed to submit task to Python service");
+        if (useFreeQuota) {
+            if (hasFreeQuota) {
+                taskBillingService.consumeFreeQuota(currentUser);
             }
-            log.info("Task submitted to Python service: {}", taskId);
-        } catch (Exception e) {
-            // If Python service fails, update task status to FAILED
-            task.setStatus("FAILED");
-            task.setErrorMessage("Failed to submit to Python service: " + e.getMessage());
-            task.setCompletedAt(LocalDateTime.now());
+            try {
+                submitTaskToEngine(task);
+            } catch (BusinessException e) {
+                if (hasFreeQuota) {
+                    taskBillingService.restoreFreeQuota(currentUser);
+                }
+                task.setStatus("FAILED");
+                task.setErrorMessage(e.getMessage());
+                task.setCompletedAt(LocalDateTime.now());
+                taskRepository.save(task);
+                throw e;
+            }
+        } else {
+            TaskPayment payment = taskPaymentService.initializePayment(task, pricingQuote, pricingSnapshot);
+            checkoutSession = stripeClient.createCheckoutSession(task, pricingQuote, null, null);
+            taskPaymentService.attachStripeSession(payment, checkoutSession.getSessionId(), checkoutSession.getPaymentIntentId());
+            task.setStripeSessionId(checkoutSession.getSessionId());
             taskRepository.save(task);
-            log.error("Failed to submit task to Python service: {}", e.getMessage());
-            throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR, "Failed to submit task to Python service: " + e.getMessage());
         }
-        return toTaskResponse(task);
+
+        TaskResponse response = toTaskResponse(task);
+        response.setPaymentRequired(!useFreeQuota);
+        response.setCheckoutSessionId(checkoutSession != null ? checkoutSession.getSessionId() : null);
+        response.setCheckoutUrl(checkoutSession != null ? checkoutSession.getUrl() : null);
+        response.setFreeQuotaTotal(currentUser.getFreeQuotaTotal());
+        response.setFreeQuotaRemaining(taskBillingService.getRemainingFreeQuota(currentUser));
+        response.setPaidTaskCount(currentUser.getPaidTaskCount());
+        response.setPaymentStatus(task.getPaymentStatus().name());
+        response.setBillingAmount(task.getBillingAmount());
+        response.setBillingCurrency(task.getBillingCurrency());
+        response.setFreeTask(task.getIsFreeTask());
+
+        log.info("Task {} submission complete. Free quota before: {}, remaining: {}",
+                taskId, remainingFreeBefore, response.getFreeQuotaRemaining());
+
+        return response;
+    }
+
+    public TaskResponse retryPayment(String taskId) {
+        User currentUser = authService.getCurrentUser();
+        Task task = taskRepository.findByTaskId(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
+
+        if (!task.getUser().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
+        }
+        if (PaymentStatus.PAID.equals(task.getPaymentStatus()) || PaymentStatus.FREE.equals(task.getPaymentStatus())) {
+            throw new BusinessException(ResultCode.INVALID_PARAMETER, "Task payment retry is not allowed for current status");
+        }
+
+        var strategy = pricingService.getActiveStrategy();
+        var quote = pricingService.calculateQuote(
+                strategy,
+                task.getResearchDepth(),
+                fromJson(task.getSelectedAnalysts())
+        );
+        String snapshot = taskBillingService.buildPricingSnapshot(quote);
+
+        TaskPayment payment = taskPaymentService.initializePayment(task, quote, snapshot);
+        StripeCheckoutSession checkoutSession = stripeClient.createCheckoutSession(task, quote, null, null);
+        taskPaymentService.attachStripeSession(payment, checkoutSession.getSessionId(), checkoutSession.getPaymentIntentId());
+        task.setStripeSessionId(checkoutSession.getSessionId());
+        task.setErrorMessage(null);
+        taskRepository.save(task);
+
+        TaskResponse response = toTaskResponse(task);
+        response.setPaymentRequired(true);
+        response.setCheckoutSessionId(checkoutSession.getSessionId());
+        response.setCheckoutUrl(checkoutSession.getUrl());
+        response.setFreeQuotaTotal(currentUser.getFreeQuotaTotal());
+        response.setFreeQuotaRemaining(taskBillingService.getRemainingFreeQuota(currentUser));
+        response.setPaidTaskCount(currentUser.getPaidTaskCount());
+        return response;
     }
 
     /**
@@ -250,13 +329,63 @@ public class TaskService {
                 .collect(Collectors.toList());
     }
 
+    private void submitTaskToEngine(Task task) {
+        try {
+            Map<String, Object> pythonResponse = pythonServiceClient
+                    .submitAnalysisTask(
+                            task.getTaskId(),
+                            task.getTicker(),
+                            task.getAnalysisDate().toString(),
+                            fromJson(task.getSelectedAnalysts()),
+                            task.getResearchDepth()
+                    )
+                    .block();
+
+            if (pythonResponse == null) {
+                throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR, "Python service returned empty response");
+            }
+            log.info("Task {} submitted to Python service", task.getTaskId());
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception e) {
+            log.error("Failed to submit task {} to Python service: {}", task.getTaskId(), e.getMessage());
+            throw new BusinessException(ResultCode.PYTHON_SERVICE_ERROR,
+                    "Failed to submit task to Python service: " + e.getMessage());
+        }
+    }
+
+    public boolean dispatchPaidTask(Task task) {
+        try {
+            submitTaskToEngine(task);
+            return true;
+        } catch (BusinessException e) {
+            task.setStatus("FAILED");
+            task.setErrorMessage(e.getMessage());
+            task.setCompletedAt(LocalDateTime.now());
+            taskRepository.save(task);
+            return false;
+        }
+    }
+
     private TaskResponse toTaskResponse(Task task) {
+        List<String> analysts = task.getSelectedAnalysts() != null
+                ? fromJson(task.getSelectedAnalysts())
+                : java.util.Collections.emptyList();
+
+        boolean requiresPayment = false;
+        if (task.getPaymentStatus() != null) {
+            requiresPayment = switch (task.getPaymentStatus()) {
+                case AWAITING_PAYMENT, PAYMENT_FAILED, PAYMENT_EXPIRED -> true;
+                default -> false;
+            };
+        }
+
         return TaskResponse.builder()
                 .id(task.getId())
                 .taskId(task.getTaskId())
                 .ticker(task.getTicker())
                 .analysisDate(task.getAnalysisDate().toString())
-                .selectedAnalysts(fromJson(task.getSelectedAnalysts()))
+                .selectedAnalysts(analysts)
                 .researchDepth(task.getResearchDepth())
                 .status(task.getStatus())
                 .finalDecision(task.getFinalDecision())
@@ -266,10 +395,19 @@ public class TaskService {
                 .toolCalls(task.getToolCalls())
                 .llmCalls(task.getLlmCalls())
                 .reports(task.getReports())
+                .paymentStatus(task.getPaymentStatus() != null ? task.getPaymentStatus().name() : null)
+                .billingAmount(task.getBillingAmount())
+                .billingCurrency(task.getBillingCurrency())
+                .freeTask(task.getIsFreeTask())
+                .paymentRequired(requiresPayment)
+                .checkoutSessionId(task.getStripeSessionId())
                 .build();
     }
 
     private String toJson(List<String> list) {
+        if (list == null) {
+            return "[]";
+        }
         try {
             return objectMapper.writeValueAsString(list);
         } catch (JsonProcessingException e) {
@@ -279,6 +417,9 @@ public class TaskService {
 
     @SuppressWarnings("unchecked")
     private List<String> fromJson(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
         try {
             return objectMapper.readValue(json, List.class);
         } catch (JsonProcessingException e) {

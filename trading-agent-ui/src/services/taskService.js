@@ -74,6 +74,12 @@ class TaskService {
       }
     }
   }
+
+  async retryPayment(taskId) {
+    const url = parseApiUrl(API_ENDPOINTS.RETRY_PAYMENT, { taskId })
+    const response = await api.post(url)
+    return response.data.data || response.data
+  }
 }
 
 export default new TaskService()

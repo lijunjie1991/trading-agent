@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import taskService from '../../services/taskService'
+import billingService from '../../services/billingService'
 import { taskMessagesAPI } from '../../services/api'
 import { AGENT_STATUS } from '../../utils/constants'
 
@@ -45,6 +46,19 @@ const initialState = {
   loading: false,
   submitting: false,
   error: null,
+
+  // Billing states
+  billingSummary: null,
+  billingLoading: false,
+  quote: null,
+  quoteLoading: false,
+  paymentRequired: false,
+  checkoutSessionId: null,
+  checkoutUrl: null,
+  pendingPaymentTaskId: null,
+  freeQuotaTotal: 0,
+  freeQuotaRemaining: 0,
+  paidTaskCount: 0,
 }
 
 // Initialize agent statuses
@@ -69,6 +83,42 @@ export const startAnalysis = createAsyncThunk(
     try {
       const data = await taskService.startAnalysis(taskData)
       return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const retryTaskPayment = createAsyncThunk(
+  'task/retryPayment',
+  async (taskId, { rejectWithValue }) => {
+    try {
+      const data = await taskService.retryPayment(taskId)
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const fetchBillingSummary = createAsyncThunk(
+  'task/fetchBillingSummary',
+  async (_, { rejectWithValue }) => {
+    try {
+      const data = await billingService.getSummary()
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const fetchTaskQuote = createAsyncThunk(
+  'task/fetchTaskQuote',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const data = await billingService.getQuote(payload)
+      return { ...data, request: payload }
     } catch (error) {
       return rejectWithValue(error.message)
     }
@@ -231,6 +281,12 @@ const taskSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
+    clearCheckoutState: (state) => {
+      state.paymentRequired = false
+      state.checkoutSessionId = null
+      state.checkoutUrl = null
+      state.pendingPaymentTaskId = null
+    },
   },
   extraReducers: (builder) => {
     // Start analysis
@@ -240,13 +296,51 @@ const taskSlice = createSlice({
     })
     builder.addCase(startAnalysis.fulfilled, (state, action) => {
       state.submitting = false
-      // Backend uses taskId (camelCase), not task_id
-      state.currentTaskId = action.payload.taskId || action.payload.task_id
-      state.currentTask = action.payload
+      const payload = action.payload || {}
+      const taskId = payload.taskId || payload.task_id
+      state.currentTask = payload
       state.agentStatuses = initializeAgentStatuses()
       state.error = null
+      state.paymentRequired = Boolean(payload.paymentRequired || payload.payment_required)
+      state.checkoutSessionId = payload.checkoutSessionId || payload.checkout_session_id || null
+      state.checkoutUrl = payload.checkoutUrl || payload.checkout_url || null
+      state.pendingPaymentTaskId = state.paymentRequired ? taskId : null
+      state.freeQuotaTotal = payload.freeQuotaTotal ?? payload.free_quota_total ?? state.freeQuotaTotal
+      state.freeQuotaRemaining = payload.freeQuotaRemaining ?? payload.free_quota_remaining ?? state.freeQuotaRemaining
+      state.paidTaskCount = payload.paidTaskCount ?? payload.paid_task_count ?? state.paidTaskCount
+      if (state.paymentRequired) {
+        state.currentTaskId = null
+      } else {
+        state.currentTaskId = taskId
+      }
     })
     builder.addCase(startAnalysis.rejected, (state, action) => {
+      state.submitting = false
+      state.error = action.payload
+      state.paymentRequired = false
+      state.checkoutSessionId = null
+      state.checkoutUrl = null
+      state.pendingPaymentTaskId = null
+    })
+
+    // Retry payment
+    builder.addCase(retryTaskPayment.pending, (state) => {
+      state.submitting = true
+      state.error = null
+    })
+    builder.addCase(retryTaskPayment.fulfilled, (state, action) => {
+      state.submitting = false
+      const payload = action.payload || {}
+      state.paymentRequired = Boolean(payload.paymentRequired || payload.payment_required || true)
+      state.checkoutSessionId = payload.checkoutSessionId || payload.checkout_session_id || null
+      state.checkoutUrl = payload.checkoutUrl || payload.checkout_url || null
+      state.pendingPaymentTaskId = payload.taskId || payload.task_id || state.pendingPaymentTaskId
+      state.freeQuotaTotal = payload.freeQuotaTotal ?? payload.free_quota_total ?? state.freeQuotaTotal
+      state.freeQuotaRemaining = payload.freeQuotaRemaining ?? payload.free_quota_remaining ?? state.freeQuotaRemaining
+      state.paidTaskCount = payload.paidTaskCount ?? payload.paid_task_count ?? state.paidTaskCount
+      state.currentTask = payload
+    })
+    builder.addCase(retryTaskPayment.rejected, (state, action) => {
       state.submitting = false
       state.error = action.payload
     })
@@ -359,6 +453,40 @@ const taskSlice = createSlice({
         }
       }
     })
+
+    // Billing summary
+    builder.addCase(fetchBillingSummary.pending, (state) => {
+      state.billingLoading = true
+    })
+    builder.addCase(fetchBillingSummary.fulfilled, (state, action) => {
+      state.billingLoading = false
+      state.billingSummary = action.payload
+      if (action.payload) {
+        state.freeQuotaTotal = action.payload.freeQuotaTotal ?? state.freeQuotaTotal
+        const remaining = action.payload.freeQuotaRemaining ?? state.freeQuotaRemaining
+        state.freeQuotaRemaining = remaining
+        state.paidTaskCount = action.payload.paidTaskCount ?? state.paidTaskCount
+      }
+    })
+    builder.addCase(fetchBillingSummary.rejected, (state) => {
+      state.billingLoading = false
+    })
+
+    // Task quote
+    builder.addCase(fetchTaskQuote.pending, (state) => {
+      state.quoteLoading = true
+    })
+    builder.addCase(fetchTaskQuote.fulfilled, (state, action) => {
+      state.quoteLoading = false
+      state.quote = action.payload
+      if (action.payload) {
+        state.freeQuotaRemaining = action.payload.freeQuotaRemaining ?? state.freeQuotaRemaining
+        state.freeQuotaTotal = action.payload.freeQuotaTotal ?? state.freeQuotaTotal
+      }
+    })
+    builder.addCase(fetchTaskQuote.rejected, (state) => {
+      state.quoteLoading = false
+    })
   },
 })
 
@@ -374,6 +502,7 @@ export const {
   resetTaskState,
   clearMessages,
   clearError,
+  clearCheckoutState,
 } = taskSlice.actions
 
 export default taskSlice.reducer

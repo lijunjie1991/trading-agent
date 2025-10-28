@@ -1,7 +1,6 @@
 // API Configuration
 // Use empty string to leverage Vite proxy in development
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8080'
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -18,7 +17,14 @@ export const API_ENDPOINTS = {
   GET_TASK_REPORTS: '/api/v1/tasks/:taskId/reports',
   CANCEL_TASK: '/api/v1/tasks/:taskId/cancel',
 
-  // WebSocket
+  // Billing
+  BILLING_SUMMARY: '/api/v1/billing/summary',
+  TASK_QUOTE: '/api/v1/billing/quote',
+
+  // Payments
+  RETRY_PAYMENT: '/api/v1/payments/retry/:taskId',
+
+  // WebSocket (handled via relative URLs)
   WS_ANALYSIS: '/ws/analysis/:taskId',
 }
 
@@ -92,6 +98,33 @@ export const DECISION_TYPES = {
   BUY: 'buy',
   SELL: 'sell',
   HOLD: 'hold',
+}
+
+export const PAYMENT_STATUS = {
+  FREE: 'FREE',
+  AWAITING_PAYMENT: 'AWAITING_PAYMENT',
+  PAID: 'PAID',
+  PAYMENT_FAILED: 'PAYMENT_FAILED',
+  PAYMENT_EXPIRED: 'PAYMENT_EXPIRED',
+  REFUNDED: 'REFUNDED',
+}
+
+export const PAYMENT_STATUS_COLORS = {
+  FREE: 'green',
+  PAID: 'blue',
+  AWAITING_PAYMENT: 'orange',
+  PAYMENT_FAILED: 'red',
+  PAYMENT_EXPIRED: 'volcano',
+  REFUNDED: 'cyan',
+}
+
+export const PAYMENT_STATUS_LABELS = {
+  FREE: 'Free',
+  AWAITING_PAYMENT: 'Awaiting Payment',
+  PAID: 'Paid',
+  PAYMENT_FAILED: 'Payment Failed',
+  PAYMENT_EXPIRED: 'Payment Expired',
+  REFUNDED: 'Refunded',
 }
 
 // Local Storage Keys

@@ -102,6 +102,16 @@ frontend/
 
    **For Docker deployment**, no configuration needed! The `nginx.conf` handles API routing automatically.
 
+3. **Configure Stripe Checkout (optional)**
+
+   Add your Stripe publishable key to `.env` (or system environment) so the frontend can redirect users to Checkout:
+
+   ```bash
+   VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+   ```
+
+   This value is required when paid flows are enabled. For environments without billing, you can leave it undefined to disable Stripe redirects.
+
 ## Development
 
 Start the development server:

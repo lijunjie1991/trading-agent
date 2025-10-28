@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/v1.0.0-initial-schema.xml
   - include:
       file: db/changelog/changes/v1.1.0-add-task-stats.xml
+  - include:
+      file: db/changelog/changes/v1.2.0-billing-schema.xml

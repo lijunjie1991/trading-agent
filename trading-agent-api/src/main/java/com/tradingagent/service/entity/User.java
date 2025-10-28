@@ -38,6 +38,21 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "free_quota_total", nullable = false)
+    @Builder.Default
+    private Integer freeQuotaTotal = 0;
+
+    @Column(name = "free_quota_used", nullable = false)
+    @Builder.Default
+    private Integer freeQuotaUsed = 0;
+
+    @Column(name = "paid_task_count", nullable = false)
+    @Builder.Default
+    private Integer paidTaskCount = 0;
+
+    @Column(name = "free_quota_last_reset")
+    private LocalDateTime freeQuotaLastReset;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Task> tasks = new ArrayList<>();

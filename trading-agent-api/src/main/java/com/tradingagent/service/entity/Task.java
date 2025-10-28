@@ -7,6 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.tradingagent.service.entity.enums.PaymentStatus;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -73,6 +76,33 @@ public class Task {
     @Column(name = "reports", nullable = false)
     @Builder.Default
     private Integer reports = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 30)
+    @Builder.Default
+    private PaymentStatus paymentStatus = PaymentStatus.FREE;
+
+    @Column(name = "billing_amount", precision = 10, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal billingAmount = BigDecimal.ZERO;
+
+    @Column(name = "billing_currency", length = 10, nullable = false)
+    @Builder.Default
+    private String billingCurrency = "USD";
+
+    @Column(name = "is_free_task", nullable = false)
+    @Builder.Default
+    private Boolean isFreeTask = Boolean.TRUE;
+
+    @Column(name = "pricing_snapshot", columnDefinition = "TEXT")
+    private String pricingSnapshot;
+
+    @Column(name = "stripe_session_id", length = 255)
+    private String stripeSessionId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_id")
+    private TaskPayment payment;
 
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

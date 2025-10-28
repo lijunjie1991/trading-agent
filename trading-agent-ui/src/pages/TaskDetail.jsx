@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider } from 'antd'
+import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider, Alert, message } from 'antd'
 import { FileTextOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
@@ -14,7 +14,10 @@ import {
   resetTaskState,
   fetchTask,
   fetchTaskMessages,
+  retryTaskPayment,
+  clearCheckoutState,
 } from '../store/slices/taskSlice'
+import { getStripe } from '../utils/stripe'
 import './TaskDetail.css'
 
 const { Title, Text } = Typography
@@ -36,6 +39,7 @@ const TaskDetail = () => {
   const [showReportsModal, setShowReportsModal] = useState(false)
   const [reports, setReports] = useState([])
   const [loadingReports, setLoadingReports] = useState(false)
+  const paymentRedirectRef = useRef(false)
 
   const {
     currentTask,
@@ -44,9 +48,16 @@ const TaskDetail = () => {
     finalDecision,
     loading,
     lastTimestamp,
+    paymentRequired,
+    checkoutSessionId,
+    checkoutUrl,
+    pendingPaymentTaskId,
+    submitting,
   } = useSelector((state) => state.task)
 
   const isProcessing = currentTask?.status === 'RUNNING' || currentTask?.status === 'PENDING'
+  const paymentStatus = (currentTask?.paymentStatus || currentTask?.payment_status || '').toUpperCase()
+  const needsPayment = ['AWAITING_PAYMENT', 'PAYMENT_FAILED', 'PAYMENT_EXPIRED'].includes(paymentStatus)
 
   useEffect(() => {
     dispatch(resetTaskState())
@@ -58,6 +69,8 @@ const TaskDetail = () => {
 
     return () => {
       stopPolling()
+      dispatch(clearCheckoutState())
+      paymentRedirectRef.current = false
     }
   }, [taskId, dispatch])
 
@@ -85,6 +98,43 @@ const TaskDetail = () => {
       stopPolling()
     }
   }, [currentTask?.status])
+
+  useEffect(() => {
+    if (!paymentRequired || pendingPaymentTaskId !== taskId) {
+      return
+    }
+    if (!checkoutSessionId && !checkoutUrl) {
+      return
+    }
+    if (paymentRedirectRef.current) {
+      return
+    }
+    paymentRedirectRef.current = true
+
+    const redirect = async () => {
+      message.info('Redirecting to Stripe to complete payment...')
+      try {
+        const stripe = await getStripe()
+        const { error: stripeError } = await stripe.redirectToCheckout({ sessionId: checkoutSessionId })
+        if (stripeError && checkoutUrl) {
+          window.location.assign(checkoutUrl)
+        } else if (stripeError) {
+          message.error(stripeError.message || 'Unable to redirect to Stripe checkout')
+        }
+      } catch (err) {
+        if (checkoutUrl) {
+          window.location.assign(checkoutUrl)
+        } else {
+          message.error(err.message || 'Stripe configuration error')
+        }
+      } finally {
+        dispatch(clearCheckoutState())
+        paymentRedirectRef.current = false
+      }
+    }
+
+    redirect()
+  }, [paymentRequired, checkoutSessionId, checkoutUrl, pendingPaymentTaskId, taskId, dispatch])
 
   useEffect(() => {
     if (currentTask) {
@@ -117,6 +167,14 @@ const TaskDetail = () => {
       setReports([])
     } finally {
       setLoadingReports(false)
+    }
+  }
+
+  const handleRetryPayment = async () => {
+    try {
+      await dispatch(retryTaskPayment(taskId)).unwrap()
+    } catch (err) {
+      message.error(err || 'Unable to create new checkout session')
     }
   }
 
@@ -154,6 +212,20 @@ const TaskDetail = () => {
 
   return (
     <div className="task-detail-page">
+      {needsPayment && (
+        <Alert
+          type={paymentStatus === 'PAYMENT_FAILED' ? 'error' : 'warning'}
+          showIcon
+          message={paymentStatus === 'AWAITING_PAYMENT' ? 'Payment required to start analysis' : 'Payment attention required'}
+          description={currentTask?.errorMessage || 'Complete the payment to start the analysis.'}
+          action={
+            <Button type="primary" size="small" onClick={handleRetryPayment} loading={submitting}>
+              Resume Payment
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {/* Compact Header with integrated View Reports button */}
       <CompactHeader
         task={currentTask}

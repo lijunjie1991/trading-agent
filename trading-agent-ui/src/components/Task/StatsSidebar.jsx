@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
 import { formatDateTime } from '../../utils/helpers'
-import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
+import { RESEARCH_DEPTH_OPTIONS, PAYMENT_STATUS_COLORS, PAYMENT_STATUS_LABELS } from '../../utils/constants'
 import './ProcessingIndicator.css'
 
 const { Text } = Typography
@@ -20,6 +20,9 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
     reports: false,
   })
   const prevStatsRef = useRef(stats)
+  const paymentStatus = (task?.paymentStatus || task?.payment_status || '').toUpperCase()
+  const billingAmountValue = task?.billingAmount ?? task?.billing_amount
+  const billingCurrency = task?.billingCurrency || task?.billing_currency || 'USD'
 
   useEffect(() => {
     const prevStats = prevStatsRef.current
@@ -177,6 +180,33 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
           </div>
 
           <Divider style={{ margin: '4px 0' }} />
+
+          {/* Payment Status */}
+          {paymentStatus ? (
+            <div>
+              <Text type="secondary" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>
+                Payment Status
+              </Text>
+              <Tag color={PAYMENT_STATUS_COLORS[paymentStatus] || 'default'} style={{ margin: 0 }}>
+                {PAYMENT_STATUS_LABELS[paymentStatus] || paymentStatus}
+              </Tag>
+              {paymentStatus !== 'FREE' && (
+                <Text style={{ fontSize: 11, color: '#374151', display: 'block', marginTop: 4 }}>
+                  Amount: {billingAmountValue != null ? `${Number(billingAmountValue).toFixed(2)} ${billingCurrency}` : 'Pending calculation'}
+                </Text>
+              )}
+            </div>
+          ) : null}
+
+          {task?.errorMessage && paymentStatus === 'PAYMENT_FAILED' && (
+            <Text type="danger" style={{ fontSize: 11 }}>
+              {task.errorMessage}
+            </Text>
+          )}
+
+          {paymentStatus ? (
+            <Divider style={{ margin: '4px 0' }} />
+          ) : null}
 
           {/* Selected Analysts */}
           <div>

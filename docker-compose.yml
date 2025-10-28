@@ -83,6 +83,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-production-secret-key-must-be-at-least-256-bits-long-change-this}
       # Python Service
       PYTHON_SERVICE_URL: http://engine:8000
+      # Stripe Billing
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-http://ui/billing/success}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-http://ui/billing/cancel}
+      BILLING_DEFAULT_PRICING_CODE: ${BILLING_DEFAULT_PRICING_CODE:-DEFAULT}
       # Server
       SERVER_PORT: 8080
     networks:

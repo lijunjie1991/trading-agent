@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,4 +31,16 @@ public class TaskResponse {
     private Integer toolCalls;
     private Integer llmCalls;
     private Integer reports;
+
+    // Billing fields
+    private String paymentStatus;
+    private BigDecimal billingAmount;
+    private String billingCurrency;
+    private Boolean freeTask;
+    private Boolean paymentRequired;
+    private String checkoutSessionId;
+    private String checkoutUrl;
+    private Integer freeQuotaTotal;
+    private Integer freeQuotaRemaining;
+    private Integer paidTaskCount;
 }

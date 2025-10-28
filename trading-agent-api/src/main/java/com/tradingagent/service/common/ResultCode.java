@@ -36,6 +36,10 @@ public enum ResultCode {
     // Python Service (12xx)
     PYTHON_SERVICE_ERROR(1201, "Python service error"),
 
+    // Payment (13xx)
+    PAYMENT_NOT_FOUND(1301, "Payment not found"),
+    PAYMENT_PROVIDER_ERROR(1302, "Payment provider error"),
+
     // Validation (14xx)
     MISSING_REQUIRED_FIELD(1401, "Missing required field"),
     INVALID_PARAMETER(1402, "Invalid parameter"),

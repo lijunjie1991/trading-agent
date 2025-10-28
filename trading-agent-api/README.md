@@ -30,6 +30,22 @@ Spring Boot backend service providing user authentication, task management, and 
 - Maven 3.8+
 - MySQL 8.0+ (for production)
 - Python analysis service running on localhost:8000
+- Stripe account (when enabling paid analysis flows)
+
+### Billing Configuration
+
+Set the following environment variables when Stripe billing is enabled:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PUBLISHABLE_KEY=pk_test_xxx # shared with frontend
+STRIPE_SUCCESS_URL=https://app.example.com/billing/success
+STRIPE_CANCEL_URL=https://app.example.com/billing/cancel
+BILLING_DEFAULT_PRICING_CODE=DEFAULT
+```
+
+The Liquibase migration seeds a default pricing strategy (`DEFAULT`) which can be adjusted via the `pricing_strategy` table.
 
 ### Installation and Running
 

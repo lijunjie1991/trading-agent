@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ChangeSet 6: Create pricing_strategy table -->
+    <changeSet id="6-create-pricing-strategy" author="JunjieLi">
+        <comment>Create pricing_strategy table for billing configuration</comment>
+        <sql>
+            CREATE TABLE pricing_strategy (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+                base_price DECIMAL(10,2) NOT NULL,
+                research_depth_multiplier DECIMAL(8,4) NOT NULL DEFAULT 0,
+                analyst_multiplier DECIMAL(8,4) NOT NULL DEFAULT 0,
+                free_tasks_per_user INT NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            );
+        </sql>
+        <rollback>
+            DROP TABLE pricing_strategy;
+        </rollback>
+    </changeSet>
+
+    <!-- ChangeSet 7: Create task_payments table -->
+    <changeSet id="7-create-task-payments" author="JunjieLi">
+        <comment>Create task_payments table to track payment lifecycle</comment>
+        <sql>
+            CREATE TABLE task_payments (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                task_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                stripe_session_id VARCHAR(255) NOT NULL,
+                stripe_payment_intent_id VARCHAR(255) NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                currency VARCHAR(10) NOT NULL,
+                status VARCHAR(30) NOT NULL,
+                pricing_snapshot TEXT,
+                is_free TINYINT(1) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                paid_at TIMESTAMP NULL,
+                CONSTRAINT fk_task_payments_task
+                    FOREIGN KEY (task_id) REFERENCES tasks(id)
+                    ON DELETE CASCADE,
+                CONSTRAINT fk_task_payments_user
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                    ON DELETE CASCADE
+            );
+        </sql>
+        <sql>
+            CREATE UNIQUE INDEX idx_task_payments_task_id ON task_payments(task_id);
+        </sql>
+        <sql>
+            CREATE INDEX idx_task_payments_user_status ON task_payments(user_id, status);
+        </sql>
+        <sql>
+            CREATE UNIQUE INDEX idx_task_payments_session ON task_payments(stripe_session_id);
+        </sql>
+        <rollback>
+            DROP TABLE task_payments;
+        </rollback>
+    </changeSet>
+
+    <!-- ChangeSet 8: Update users table with billing fields -->
+    <changeSet id="8-update-users-billing-columns" author="JunjieLi">
+        <comment>Add billing quota tracking columns to users table</comment>
+        <sql>
+            ALTER TABLE users
+            ADD COLUMN free_quota_total INT NOT NULL DEFAULT 0,
+            ADD COLUMN free_quota_used INT NOT NULL DEFAULT 0,
+            ADD COLUMN paid_task_count INT NOT NULL DEFAULT 0,
+            ADD COLUMN free_quota_last_reset TIMESTAMP NULL DEFAULT NULL;
+        </sql>
+        <rollback>
+            ALTER TABLE users
+            DROP COLUMN free_quota_total,
+            DROP COLUMN free_quota_used,
+            DROP COLUMN paid_task_count,
+            DROP COLUMN free_quota_last_reset;
+        </rollback>
+    </changeSet>
+
+    <!-- ChangeSet 9: Update tasks table with billing fields -->
+    <changeSet id="9-update-tasks-billing-columns" author="JunjieLi">
+        <comment>Add billing related columns to tasks table</comment>
+        <sql>
+            ALTER TABLE tasks
+            ADD COLUMN payment_status VARCHAR(30) NOT NULL DEFAULT 'FREE',
+            ADD COLUMN billing_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+            ADD COLUMN billing_currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+            ADD COLUMN is_free_task TINYINT(1) NOT NULL DEFAULT 0,
+            ADD COLUMN pricing_snapshot TEXT NULL,
+            ADD COLUMN stripe_session_id VARCHAR(255) NULL;
+        </sql>
+        <sql>
+            CREATE INDEX idx_tasks_user_payment_status ON tasks(user_id, payment_status);
+        </sql>
+        <rollback>
+            ALTER TABLE tasks
+            DROP COLUMN payment_status,
+            DROP COLUMN billing_amount,
+            DROP COLUMN billing_currency,
+            DROP COLUMN is_free_task,
+            DROP COLUMN pricing_snapshot,
+            DROP COLUMN stripe_session_id;
+        </rollback>
+    </changeSet>
+
+    <!-- ChangeSet 10: Add payment_id column to tasks table -->
+    <changeSet id="10-update-tasks-payment-id" author="JunjieLi">
+        <comment>Link tasks table with task_payments via payment_id</comment>
+        <sql>
+            ALTER TABLE tasks
+            ADD COLUMN payment_id BIGINT NULL,
+            ADD CONSTRAINT fk_tasks_payment_id
+                FOREIGN KEY (payment_id) REFERENCES task_payments(id)
+                ON DELETE SET NULL;
+        </sql>
+        <rollback>
+            ALTER TABLE tasks
+            DROP FOREIGN KEY fk_tasks_payment_id,
+            DROP COLUMN payment_id;
+        </rollback>
+    </changeSet>
+
+    <!-- ChangeSet 11: Seed initial billing data -->
+    <changeSet id="11-seed-pricing-strategy" author="JunjieLi">
+        <comment>Seed default pricing strategy and backfill existing records</comment>
+        <sql>
+            INSERT INTO pricing_strategy (code, currency, base_price, research_depth_multiplier, analyst_multiplier, free_tasks_per_user, is_active)
+            VALUES ('DEFAULT', 'USD', 49.00, 0.25, 0.15, 5, 1);
+        </sql>
+        <sql>
+            UPDATE users
+            SET free_quota_total = 5
+            WHERE free_quota_total = 0;
+        </sql>
+        <sql>
+            UPDATE tasks
+            SET payment_status = 'FREE',
+                billing_amount = 0,
+                billing_currency = 'USD',
+                is_free_task = 1
+            WHERE payment_status IS NULL OR payment_status = '';
+        </sql>
+        <rollback>
+            DELETE FROM pricing_strategy WHERE code = 'DEFAULT';
+            UPDATE users SET free_quota_total = 0 WHERE free_quota_total = 5;
+            UPDATE tasks SET payment_status = 'PENDING' WHERE payment_status = 'FREE' AND billing_amount = 0;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

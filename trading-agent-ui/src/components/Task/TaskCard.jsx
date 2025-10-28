@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { getStatusColor, formatDateTime, getDecisionBadgeStatus, calculateDuration } from '../../utils/helpers'
+import { PAYMENT_STATUS_COLORS, PAYMENT_STATUS_LABELS } from '../../utils/constants'
 
 const { Text } = Typography
 
@@ -30,6 +31,11 @@ const TaskCard = ({ task }) => {
   const analysisDate = task.analysisDate || task.analysis_date
   const completedAt = task.completedAt || task.completed_at
   const errorMessage = task.errorMessage || task.error_message
+  const paymentStatusRaw = (task.paymentStatus || task.payment_status || '').toUpperCase()
+  const paymentStatusColor = PAYMENT_STATUS_COLORS[paymentStatusRaw] || 'default'
+  const paymentStatusLabel = PAYMENT_STATUS_LABELS[paymentStatusRaw] || paymentStatusRaw
+  const billingAmount = task.billingAmount ?? task.billing_amount
+  const billingCurrency = task.billingCurrency || task.billing_currency || 'USD'
 
   // Status icon mapping
   const statusIcons = {
@@ -98,22 +104,40 @@ const TaskCard = ({ task }) => {
             Task ID: {(task.taskId || task.task_id || '').slice(0, 8)}...
           </Text>
         </div>
-        <Tag
-          icon={statusIcons[task.status]}
-          color={getStatusColor(task.status)}
-          style={{
-            fontSize: 11,
-            padding: '6px 12px',
-            fontWeight: 600,
-            borderRadius: 6,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            border: 'none',
-            margin: 0,
-          }}
-        >
-          {task.status}
-        </Tag>
+        <Space direction="vertical" size={6} align="end">
+          <Tag
+            icon={statusIcons[task.status]}
+            color={getStatusColor(task.status)}
+            style={{
+              fontSize: 11,
+              padding: '6px 12px',
+              fontWeight: 600,
+              borderRadius: 6,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              border: 'none',
+              margin: 0,
+            }}
+          >
+            {task.status}
+          </Tag>
+          {paymentStatusRaw && (
+            <Tag
+              color={paymentStatusColor}
+              style={{
+                fontSize: 10,
+                padding: '4px 10px',
+                borderRadius: 6,
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px',
+                border: 'none',
+                margin: 0,
+              }}
+            >
+              {paymentStatusLabel}
+            </Tag>
+          )}
+        </Space>
       </div>
 
       {/* Decision Badge - Always reserve space */}
@@ -202,6 +226,21 @@ const TaskCard = ({ task }) => {
               {(task.selectedAnalysts || task.selected_analysts || []).join(', ') || 'N/A'}
             </Text>
           </div>
+
+          {paymentStatusRaw && (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, color: '#9ca3af', minWidth: 100 }}>
+                Billing:
+              </Text>
+              <Text style={{ fontSize: 12, color: '#111827', fontWeight: 500 }}>
+                {paymentStatusRaw === 'FREE'
+                  ? 'Covered by free credit'
+                  : billingAmount != null
+                    ? `${Number(billingAmount).toFixed(2)} ${billingCurrency}`
+                    : 'Pending calculation'}
+              </Text>
+            </div>
+          )}
 
           {/* Research Depth */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
