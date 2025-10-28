@@ -39,15 +39,6 @@ public enum ResultCode {
     // Validation (14xx)
     MISSING_REQUIRED_FIELD(1401, "Missing required field"),
     INVALID_PARAMETER(1402, "Invalid parameter"),
-
-    // Configuration (15xx)
-    CONFIGURATION_ERROR(1501, "Configuration error"),
-
-    // Payment (16xx)
-    PAYMENT_REQUIRED(1601, "Payment required"),
-    PAYMENT_NOT_FOUND(1602, "Payment not found"),
-    PAYMENT_STATE_ERROR(1603, "Invalid payment state"),
-    PAYMENT_VERIFICATION_FAILED(1604, "Payment verification failed"),
     ;
 
     private final Integer code;

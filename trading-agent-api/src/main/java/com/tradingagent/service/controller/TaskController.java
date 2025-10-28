@@ -1,14 +1,10 @@
 package com.tradingagent.service.controller;
 
 import com.tradingagent.service.common.Result;
-import com.tradingagent.service.dto.BillingProfileResponse;
 import com.tradingagent.service.dto.PageResponse;
-import com.tradingagent.service.dto.TaskPriceQuoteRequest;
-import com.tradingagent.service.dto.TaskPriceQuoteResponse;
 import com.tradingagent.service.dto.TaskQueryRequest;
 import com.tradingagent.service.dto.TaskRequest;
 import com.tradingagent.service.dto.TaskResponse;
-import com.tradingagent.service.dto.TaskSubmissionResult;
 import com.tradingagent.service.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,21 +22,9 @@ public class TaskController {
     private final TaskService taskService;
 
     @PostMapping
-    public ResponseEntity<Result<TaskSubmissionResult>> submitTask(@Valid @RequestBody TaskRequest request) {
-        TaskSubmissionResult response = taskService.submitTask(request);
+    public ResponseEntity<Result<TaskResponse>> submitTask(@Valid @RequestBody TaskRequest request) {
+        TaskResponse response = taskService.submitTask(request);
         return ResponseEntity.ok(Result.success(response, "Task submitted successfully"));
-    }
-
-    @PostMapping("/price-quote")
-    public ResponseEntity<Result<TaskPriceQuoteResponse>> quoteTask(@Valid @RequestBody TaskPriceQuoteRequest request) {
-        TaskPriceQuoteResponse response = taskService.quoteTask(request);
-        return ResponseEntity.ok(Result.success(response));
-    }
-
-    @GetMapping("/billing/profile")
-    public ResponseEntity<Result<BillingProfileResponse>> getBillingProfile() {
-        BillingProfileResponse response = taskService.getBillingProfile();
-        return ResponseEntity.ok(Result.success(response));
     }
 
     @GetMapping

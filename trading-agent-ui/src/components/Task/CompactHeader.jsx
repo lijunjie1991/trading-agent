@@ -33,15 +33,6 @@ const CompactHeader = ({ task, finalDecision, isProcessing }) => {
 
   const isCompleted = task?.status === 'COMPLETED'
   const isFailed = task?.status === 'FAILED'
-  const paymentStatus = task?.paymentStatus || task?.payment_status
-  const paymentStatusColor = {
-    FREE_GRANTED: 'success',
-    WAITING_PAYMENT: 'warning',
-    PROCESSING: 'processing',
-    PAID: 'success',
-    FAILED: 'error',
-    REFUNDED: 'default',
-  }
 
   // Get decision emoji and styling
   const getDecisionStyle = () => {
@@ -174,28 +165,10 @@ const CompactHeader = ({ task, finalDecision, isProcessing }) => {
                       letterSpacing: '0.05em',
                     }}
                   >
-                    {(task?.status || 'UNKNOWN').replace(/_/g, ' ')}
+                    {task?.status || 'UNKNOWN'}
                   </Tag>
                 }
               />
-
-              {paymentStatus && paymentStatus !== 'FREE_GRANTED' && (
-                <Tag
-                  color={paymentStatusColor[paymentStatus] || 'default'}
-                  style={{
-                    fontSize: 11,
-                    padding: '4px 10px',
-                    border: 'none',
-                    borderRadius: 14,
-                    textTransform: 'capitalize',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    color: '#fff',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  Payment: {paymentStatus.replace(/_/g, ' ').toLowerCase()}
-                </Tag>
-              )}
 
               {/* Date with Icon */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

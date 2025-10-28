@@ -18,8 +18,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     Optional<Task> findByTaskId(String taskId);
 
-    Optional<Task> findByPaymentIntentId(String paymentIntentId);
-
     List<Task> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     List<Task> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, String status);

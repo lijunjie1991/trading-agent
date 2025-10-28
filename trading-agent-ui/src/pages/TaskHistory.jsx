@@ -164,11 +164,9 @@ const TaskHistory = () => {
                 >
                   <Option value="all">All Status</Option>
                   <Option value="pending">Pending</Option>
-                  <Option value="waiting_payment">Waiting Payment</Option>
                   <Option value="running">Running</Option>
                   <Option value="completed">Completed</Option>
                   <Option value="failed">Failed</Option>
-                  <Option value="payment_failed">Payment Failed</Option>
                 </Select>
               </Form.Item>
             </Col>

@@ -4,7 +4,6 @@ import com.tradingagent.service.common.ResultCode;
 import com.tradingagent.service.dto.AuthResponse;
 import com.tradingagent.service.dto.LoginRequest;
 import com.tradingagent.service.dto.RegisterRequest;
-import com.tradingagent.service.entity.PricingStrategy;
 import com.tradingagent.service.entity.User;
 import com.tradingagent.service.exception.BusinessException;
 import com.tradingagent.service.exception.ResourceNotFoundException;
@@ -27,8 +26,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManager authenticationManager;
-    private final PricingService pricingService;
-    private final QuotaService quotaService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -44,9 +41,6 @@ public class AuthService {
                 .build();
 
         user = userRepository.save(user);
-
-        PricingStrategy strategy = pricingService.getActiveStrategy(null);
-        quotaService.initializeQuota(user, strategy);
 
         // Generate JWT token
         String token = tokenProvider.generateToken(user.getEmail());

@@ -85,12 +85,10 @@ export const truncateTaskId = (taskId) => {
 export const getStatusColor = (status) => {
   const colors = {
     pending: 'default',
-    waiting_payment: 'warning',
     running: 'processing',
     completed: 'success',
     failed: 'error',
     cancelled: 'warning',
-    payment_failed: 'error',
   }
   return colors[status?.toLowerCase()] || 'default'
 }
@@ -195,22 +193,6 @@ export const sleep = (ms) => {
 export const formatNumber = (num) => {
   if (!num && num !== 0) return '0'
   return num.toLocaleString()
-}
-
-export const formatCurrency = (amountCents, currency = 'usd') => {
-  if (amountCents === null || amountCents === undefined) {
-    return '$0.00'
-  }
-  try {
-    const formatter = new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: (currency || 'usd').toUpperCase(),
-      minimumFractionDigits: 2,
-    })
-    return formatter.format((amountCents || 0) / 100)
-  } catch (error) {
-    return `$${((amountCents || 0) / 100).toFixed(2)}`
-  }
 }
 
 /**

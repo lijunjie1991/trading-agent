@@ -123,29 +123,11 @@ UI_PORT=80
 MYSQL_PORT=3306
 ```
 
-**Billing & Payments**:
-```bash
-# Stripe credentials
-STRIPE_SECRET_KEY=sk_test_placeholder
-STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
-STRIPE_WEBHOOK_SECRET=whsec_placeholder
-
-# Payment workflow
-STRIPE_CURRENCY=usd
-FREE_TASK_LIMIT=5
-PRICING_STRATEGY_CODE=DEFAULT_2024
-PRICING_CACHE_TTL_SECONDS=300
-
-# Frontend (Vite) environment variables
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
-VITE_DEFAULT_PRICING_STRATEGY=DEFAULT_2024
-```
-
 ### Environment Variables NOT Needed
 
 ❌ **No longer required**:
 - `REDIS_HOST`, `REDIS_PORT` - Redis removed
-- `VITE_WS_BASE_URL` - WebSocket proxy handled automatically
+- `VITE_API_BASE_URL`, `VITE_WS_BASE_URL` - Handled by proxy
 
 ## Service Configuration
 

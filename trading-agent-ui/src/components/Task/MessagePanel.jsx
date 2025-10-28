@@ -9,7 +9,7 @@ const { Title, Text } = Typography
 
 marked.setOptions({
   gfm: true,
-  breaks: true,  // allow single line breaks to render as newline
+  breaks: true,  // 允许单个换行符也产生换行效果
 })
 
 const MessagePanel = ({
@@ -74,7 +74,7 @@ const MessagePanel = ({
     Object.entries(contentRefs.current).forEach(([id, element]) => {
       if (!element) return
       const contentHeight = element.scrollHeight
-      // Only consider entries that truly overflow the collapsed height
+      // 确保内容真正超出折叠高度才显示展开按钮
       if (contentHeight > COLLAPSED_HEIGHT + 20) {
         nextOverflow.add(id)
       }
@@ -180,7 +180,7 @@ const MessagePanel = ({
       }
     }
 
-    // CSV/tabular detection is disabled to avoid misclassifying Markdown content
+    // CSV/键值表格检测暂时关闭，避免 Markdown 内容被误识别
     // const tableSection = extractTabularSection(stringContent)
     // if (tableSection) {
     //   return {
@@ -339,11 +339,11 @@ const MessagePanel = ({
     if (!line.includes(':')) return false
     if (/^https?:\/\//i.test(line)) return false
 
-    // Exclude Markdown list syntax (ordered and unordered)
+    // 排除 Markdown 列表 (有序/无序)
     if (/^\s*\d+\.\s/.test(line)) return false  // 1. 2. 3.
     if (/^\s*[-*+]\s/.test(line)) return false  // - * +
 
-    // Ignore lines containing Markdown bold text (typically list entries)
+    // 排除包含 Markdown 加粗语法的行 (通常是列表项)
     if (/\*\*[^*]+\*\*/.test(line)) return false
 
     const [first, ...rest] = line.split(':')
@@ -352,17 +352,17 @@ const MessagePanel = ({
 
     if (!key || !value) return false
 
-    // Key should remain concise for key-value style content
+    // Key 应该相对简短 (真实的 key-value 表格)
     if (key.length > 50) return false
 
-    // Key should not contain sentence-ending punctuation
+    // Key 不应该包含句子结束标点
     if (/[.!?]/.test(key)) return false
 
-    // Key should not include too many words
+    // Key 应该比较简洁，不应该有太多空格
     const keyWords = key.split(/\s+/)
     if (keyWords.length > 6) return false
 
-    // Value should remain relatively short to avoid flagging long paragraphs
+    // Value 应该相对简短 (避免误判长句子)
     if (value.length > 200) return false
 
     return true
@@ -591,12 +591,12 @@ const MessagePanel = ({
               const isExpanded = expandedIds.has(messageId)
               const isOverflowing = overflowingIds.has(messageId)
               const { node: contentNode, lengthHint } = buildMessageContent(message)
-              // Only show the expand toggle when the content actually exceeds the collapsed height
+              // 只有当内容真正超出折叠高度时才显示展开按钮
               const contentHeight = contentRefs.current[messageId]?.scrollHeight || 0
               const hasRealOverflow = contentHeight > COLLAPSED_HEIGHT + 10
               const hasLongContent = hasRealOverflow || lengthHint > LONG_CONTENT_THRESHOLD
 
-              // Ensure the toggle is visible only if more content is available
+              // 确保只有在真正有更多内容可显示时才显示展开按钮
               const shouldShowToggle = hasLongContent && !isExpanded
               const showToggle = shouldShowToggle || isExpanded
               const showGradient = !isExpanded && hasLongContent

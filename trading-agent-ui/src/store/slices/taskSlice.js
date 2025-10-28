@@ -7,8 +7,6 @@ const initialState = {
   // Current task
   currentTask: null,
   currentTaskId: null,
-  paymentInfo: null,
-  quotaInfo: null,
 
   // Task list
   tasks: [],
@@ -42,9 +40,6 @@ const initialState = {
   },
   currentReport: null,
   finalDecision: null,
-  billingProfile: null,
-  priceQuote: null,
-  paymentConfirming: false,
 
   // Loading states
   loading: false,
@@ -121,42 +116,6 @@ export const cancelTask = createAsyncThunk(
   async (taskId, { rejectWithValue }) => {
     try {
       const data = await taskService.cancelTask(taskId)
-      return data
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
-  }
-)
-
-export const fetchBillingProfile = createAsyncThunk(
-  'task/fetchBillingProfile',
-  async (_, { rejectWithValue }) => {
-    try {
-      const data = await taskService.getBillingProfile()
-      return data
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
-  }
-)
-
-export const fetchPriceQuote = createAsyncThunk(
-  'task/fetchPriceQuote',
-  async (quoteRequest, { rejectWithValue }) => {
-    try {
-      const data = await taskService.getPriceQuote(quoteRequest)
-      return data
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
-  }
-)
-
-export const confirmPayment = createAsyncThunk(
-  'task/confirmPayment',
-  async (paymentIntentId, { rejectWithValue }) => {
-    try {
-      const data = await taskService.confirmPayment(paymentIntentId)
       return data
     } catch (error) {
       return rejectWithValue(error.message)
@@ -263,8 +222,6 @@ const taskSlice = createSlice({
       }
       state.currentReport = null
       state.finalDecision = null
-      state.paymentInfo = null
-      state.quotaInfo = null
     },
 
     clearMessages: (state) => {
@@ -276,159 +233,132 @@ const taskSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder
-      .addCase(startAnalysis.pending, (state) => {
-        state.submitting = true
-        state.error = null
-        state.paymentInfo = null
-        state.quotaInfo = null
-      })
-      .addCase(startAnalysis.fulfilled, (state, action) => {
-        state.submitting = false
-        const payload = action.payload || {}
-        const task = payload.task || payload
-        state.currentTaskId = task?.taskId || task?.task_id || null
-        state.currentTask = task
-        state.paymentInfo = payload.payment || null
-        state.quotaInfo = payload.quota || null
-        state.agentStatuses = initializeAgentStatuses()
-        if (payload.quota) {
-          state.billingProfile = {
-            ...(state.billingProfile || {}),
-            freeTasksTotal: payload.quota.freeTasksTotal,
-            freeTasksUsed: payload.quota.freeTasksUsed,
-            freeTasksRemaining: payload.quota.freeTasksRemaining,
-            paidTasksTotal: payload.quota.paidTasksTotal,
-            totalTasksUsed: payload.quota.totalTasksUsed,
-          }
+    // Start analysis
+    builder.addCase(startAnalysis.pending, (state) => {
+      state.submitting = true
+      state.error = null
+    })
+    builder.addCase(startAnalysis.fulfilled, (state, action) => {
+      state.submitting = false
+      // Backend uses taskId (camelCase), not task_id
+      state.currentTaskId = action.payload.taskId || action.payload.task_id
+      state.currentTask = action.payload
+      state.agentStatuses = initializeAgentStatuses()
+      state.error = null
+    })
+    builder.addCase(startAnalysis.rejected, (state, action) => {
+      state.submitting = false
+      state.error = action.payload
+    })
+
+    // Fetch task
+    builder.addCase(fetchTask.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(fetchTask.fulfilled, (state, action) => {
+      state.loading = false
+      state.currentTask = action.payload
+
+      // 从 task 对象中提取 finalDecision 字段
+      const task = action.payload
+      if (task) {
+        const decision = task.finalDecision || task.final_decision || task.decision
+        if (decision) {
+          state.finalDecision = decision
         }
-        state.error = null
-      })
-      .addCase(startAnalysis.rejected, (state, action) => {
-        state.submitting = false
-        state.error = action.payload
-        state.paymentInfo = null
-        state.quotaInfo = null
-      })
-      .addCase(fetchTask.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(fetchTask.fulfilled, (state, action) => {
-        state.loading = false
+      }
+
+      state.error = null
+    })
+    builder.addCase(fetchTask.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload
+    })
+
+    // Fetch tasks
+    builder.addCase(fetchTasks.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(fetchTasks.fulfilled, (state, action) => {
+      state.loading = false
+      // Backend returns array directly in data field
+      state.tasks = Array.isArray(action.payload) ? action.payload : (action.payload.tasks || action.payload)
+      state.error = null
+    })
+    builder.addCase(fetchTasks.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload
+    })
+
+    // Query tasks with pagination
+    builder.addCase(queryTasks.pending, (state) => {
+      state.loading = true
+      state.error = null
+    })
+    builder.addCase(queryTasks.fulfilled, (state, action) => {
+      state.loading = false
+      // Backend returns PageResponse: { content, currentPage, pageSize, totalElements, totalPages, hasNext, hasPrevious }
+      const pageResponse = action.payload
+      state.tasks = pageResponse.content || []
+      state.pagination = {
+        currentPage: pageResponse.currentPage || 0,
+        pageSize: pageResponse.pageSize || 12,
+        totalElements: pageResponse.totalElements || 0,
+        totalPages: pageResponse.totalPages || 0,
+        hasNext: pageResponse.hasNext || false,
+        hasPrevious: pageResponse.hasPrevious || false,
+      }
+      state.error = null
+    })
+    builder.addCase(queryTasks.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload
+    })
+
+    // Cancel task
+    builder.addCase(cancelTask.fulfilled, (state, action) => {
+      if (state.currentTask?.task_id === action.payload.task_id) {
         state.currentTask = action.payload
-        state.currentTaskId = action.payload?.taskId || action.payload?.task_id || state.currentTaskId
+      }
+    })
 
-        const task = action.payload
-        if (task) {
-          const decision = task.finalDecision || task.final_decision || task.decision
-          if (decision) {
-            state.finalDecision = decision
-          }
+    // Fetch task stats
+    builder.addCase(fetchTaskStats.fulfilled, (state, action) => {
+      state.taskStats = action.payload
+    })
+
+    // Fetch task messages
+    builder.addCase(fetchTaskMessages.fulfilled, (state, action) => {
+      const messages = action.payload || []
+
+      if (state.lastTimestamp === null || state.messages.length === 0) {
+        // Initial fetch - replace all messages
+        // Backend returns DESC order (newest first)
+        state.messages = messages
+
+        // Update last timestamp
+        if (messages.length > 0 && messages[0].createdAt) {
+          state.lastTimestamp = messages[0].createdAt
+        }
+      } else if (messages.length > 0) {
+        // Incremental fetch - add new messages to the front
+        // Backend returns DESC order (newest first)
+        state.messages = [...messages, ...state.messages]
+
+        // Keep only last 100 messages
+        if (state.messages.length > 100) {
+          state.messages = state.messages.slice(0, 100)
         }
 
-        state.error = null
-      })
-      .addCase(fetchTask.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-      .addCase(fetchTasks.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(fetchTasks.fulfilled, (state, action) => {
-        state.loading = false
-        state.tasks = Array.isArray(action.payload) ? action.payload : (action.payload.tasks || action.payload)
-        state.error = null
-      })
-      .addCase(fetchTasks.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-      .addCase(queryTasks.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(queryTasks.fulfilled, (state, action) => {
-        state.loading = false
-        const pageResponse = action.payload
-        state.tasks = pageResponse.content || []
-        state.pagination = {
-          currentPage: pageResponse.currentPage || 0,
-          pageSize: pageResponse.pageSize || 12,
-          totalElements: pageResponse.totalElements || 0,
-          totalPages: pageResponse.totalPages || 0,
-          hasNext: pageResponse.hasNext || false,
-          hasPrevious: pageResponse.hasPrevious || false,
+        // Update last timestamp (Timestamp of the latest message - The first message is the latest)
+        const latestMessage = messages[0]
+        if (latestMessage && latestMessage.createdAt) {
+          state.lastTimestamp = latestMessage.createdAt
         }
-        state.error = null
-      })
-      .addCase(queryTasks.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-      .addCase(cancelTask.fulfilled, (state, action) => {
-        const taskId = action.payload?.taskId || action.payload?.task_id
-        if (state.currentTaskId && state.currentTaskId === taskId) {
-          state.currentTask = action.payload
-        }
-      })
-      .addCase(fetchTaskStats.fulfilled, (state, action) => {
-        state.taskStats = action.payload
-      })
-      .addCase(fetchTaskMessages.fulfilled, (state, action) => {
-        const messages = action.payload || []
-
-        if (state.lastTimestamp === null || state.messages.length === 0) {
-          state.messages = messages
-          if (messages.length > 0 && messages[0].createdAt) {
-            state.lastTimestamp = messages[0].createdAt
-          }
-        } else if (messages.length > 0) {
-          state.messages = [...messages, ...state.messages]
-          if (state.messages.length > 100) {
-            state.messages = state.messages.slice(0, 100)
-          }
-          const latestMessage = messages[0]
-          if (latestMessage && latestMessage.createdAt) {
-            state.lastTimestamp = latestMessage.createdAt
-          }
-        }
-      })
-      .addCase(fetchBillingProfile.fulfilled, (state, action) => {
-        state.billingProfile = action.payload
-      })
-      .addCase(fetchBillingProfile.rejected, (state, action) => {
-        state.billingProfile = state.billingProfile
-      })
-      .addCase(fetchPriceQuote.pending, (state) => {
-        state.priceQuote = null
-      })
-      .addCase(fetchPriceQuote.fulfilled, (state, action) => {
-        state.priceQuote = action.payload
-      })
-      .addCase(fetchPriceQuote.rejected, (state, action) => {
-        state.priceQuote = null
-      })
-      .addCase(confirmPayment.pending, (state) => {
-        state.paymentConfirming = true
-        state.error = null
-      })
-      .addCase(confirmPayment.fulfilled, (state, action) => {
-        state.paymentConfirming = false
-        const task = action.payload
-        state.currentTask = task
-        state.currentTaskId = task?.taskId || task?.task_id || state.currentTaskId
-        state.paymentInfo = null
-        state.quotaInfo = null
-        state.agentStatuses = initializeAgentStatuses()
-        state.error = null
-      })
-      .addCase(confirmPayment.rejected, (state, action) => {
-        state.paymentConfirming = false
-        state.error = action.payload
-      })
+      }
+    })
   },
 })
 

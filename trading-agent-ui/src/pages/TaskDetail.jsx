@@ -22,7 +22,7 @@ const { TabPane } = Tabs
 
 marked.setOptions({
   gfm: true,
-  breaks: true,  // allow single line breaks to render as newline
+  breaks: true,  // 允许单个换行符也产生换行效果
 })
 
 const TaskDetail = () => {
