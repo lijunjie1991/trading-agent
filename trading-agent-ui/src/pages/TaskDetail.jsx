@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider, Alert, message } from 'antd'
-import { FileTextOutlined } from '@ant-design/icons'
+import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider, message } from 'antd'
+import { FileTextOutlined, CreditCardOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
 import CompactHeader from '../components/Task/CompactHeader'
@@ -18,6 +18,7 @@ import {
   retryTaskPayment,
   clearPaymentState,
 } from '../store/slices/taskSlice'
+import { RESEARCH_DEPTH_OPTIONS, PAYMENT_STATUS } from '../utils/constants'
 import './TaskDetail.css'
 
 const { Title, Text } = Typography
@@ -25,7 +26,7 @@ const { TabPane } = Tabs
 
 marked.setOptions({
   gfm: true,
-  breaks: true,  // 允许单个换行符也产生换行效果
+  breaks: true,  // allow single line breaks to render as <br>
 })
 
 const TaskDetail = () => {
@@ -40,6 +41,8 @@ const TaskDetail = () => {
   const [reports, setReports] = useState([])
   const [loadingReports, setLoadingReports] = useState(false)
   const [paymentModalVisible, setPaymentModalVisible] = useState(false)
+  const [refreshingPaymentDetails, setRefreshingPaymentDetails] = useState(false)
+  const [openingPaymentModal, setOpeningPaymentModal] = useState(false)
   const paymentPresentationRef = useRef(false)
   const lastPaymentSecretRef = useRef(null)
   const ensureClientSecretRef = useRef(false)
@@ -59,9 +62,54 @@ const TaskDetail = () => {
 
   const isProcessing = currentTask?.status === 'RUNNING' || currentTask?.status === 'PENDING'
   const paymentStatus = (currentTask?.paymentStatus || currentTask?.payment_status || '').toUpperCase()
-  const needsPayment = ['AWAITING_PAYMENT', 'PAYMENT_FAILED', 'PAYMENT_EXPIRED'].includes(paymentStatus)
+  const needsPayment = [
+    PAYMENT_STATUS.AWAITING_PAYMENT,
+    PAYMENT_STATUS.PAYMENT_FAILED,
+    PAYMENT_STATUS.PAYMENT_EXPIRED
+  ].includes(paymentStatus)
+  const isPaymentExpired = paymentStatus === PAYMENT_STATUS.PAYMENT_EXPIRED
   const billingAmount = currentTask?.billingAmount ?? currentTask?.billing_amount ?? null
   const billingCurrency = currentTask?.billingCurrency ?? currentTask?.billing_currency ?? 'USD'
+  const formatBillingAmount = (amount, currency) => {
+    if (amount === undefined || amount === null) {
+      return null
+    }
+    const numeric = typeof amount === 'number' ? amount : Number(amount)
+    if (Number.isNaN(numeric)) {
+      return null
+    }
+    const formatter = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currency || 'USD',
+    })
+    return {
+      display: formatter.format(numeric),
+      raw: numeric,
+    }
+  }
+  const billingBasis = useMemo(() => {
+    if (!currentTask) {
+      return null
+    }
+    const depthValue = currentTask.researchDepth ?? currentTask.research_depth
+    const depthOption = RESEARCH_DEPTH_OPTIONS.find((option) => option.value === depthValue)
+    const analysts = currentTask.selectedAnalysts ?? currentTask.selected_analysts ?? []
+    const appliedFreeCredit = Boolean(currentTask.freeQuotaApplied ?? currentTask.free_quota_applied)
+    const parts = []
+    if (depthOption) {
+      parts.push(`${depthOption.label.toLowerCase()} depth`)
+    }
+    if (analysts.length) {
+      parts.push(`${analysts.length} analyst${analysts.length > 1 ? 's' : ''}`)
+    }
+    if (appliedFreeCredit) {
+      parts.push('after free credit')
+    }
+    if (!parts.length) {
+      return null
+    }
+    return parts.join(' · ')
+  }, [currentTask])
 
   useEffect(() => {
     dispatch(resetTaskState())
@@ -77,6 +125,7 @@ const TaskDetail = () => {
       paymentPresentationRef.current = false
       lastPaymentSecretRef.current = null
       ensureClientSecretRef.current = false
+      setRefreshingPaymentDetails(false)
       dispatch(clearPaymentState())
     }
   }, [taskId, dispatch])
@@ -112,30 +161,28 @@ const TaskDetail = () => {
       paymentPresentationRef.current = false
       lastPaymentSecretRef.current = null
       ensureClientSecretRef.current = false
+      setRefreshingPaymentDetails(false)
       return
     }
 
     if (!paymentClientSecret) {
       if (!ensureClientSecretRef.current && !submitting) {
         ensureClientSecretRef.current = true
+        setRefreshingPaymentDetails(true)
         dispatch(retryTaskPayment(taskId)).catch(() => {
           ensureClientSecretRef.current = false
+          setRefreshingPaymentDetails(false)
         })
       }
       return
     }
 
     ensureClientSecretRef.current = false
+    setRefreshingPaymentDetails(false)
 
     if (lastPaymentSecretRef.current !== paymentClientSecret) {
       lastPaymentSecretRef.current = paymentClientSecret
       paymentPresentationRef.current = false
-    }
-
-    if (!paymentPresentationRef.current) {
-      message.info('Payment is required to continue this analysis.')
-      paymentPresentationRef.current = true
-      setPaymentModalVisible(true)
     }
   }, [paymentRequired, paymentClientSecret, pendingPaymentTaskId, taskId, dispatch, submitting])
 
@@ -173,13 +220,31 @@ const TaskDetail = () => {
     }
   }
 
-  const handleRetryPayment = async () => {
+  const handleOpenPaymentModal = async () => {
     try {
-      await dispatch(retryTaskPayment(taskId)).unwrap()
-      paymentPresentationRef.current = false
-      lastPaymentSecretRef.current = null
+      setOpeningPaymentModal(true)
+
+      // If payment expired, show informative message
+      if (isPaymentExpired) {
+        message.info('Payment window expired. Generating new payment link...')
+      }
+
+      if (!paymentClientSecret || isPaymentExpired) {
+        setRefreshingPaymentDetails(true)
+        const payload = await dispatch(retryTaskPayment(taskId)).unwrap()
+        const secret = payload?.paymentClientSecret || payload?.payment_client_secret
+        if (!secret) {
+          throw new Error('Payment details are not available. Please try again.')
+        }
+      }
+      paymentPresentationRef.current = true
+      setPaymentModalVisible(true)
     } catch (err) {
-      message.error(err || 'Unable to refresh payment intent')
+      const errorMessage = typeof err === 'string' ? err : err?.message
+      message.error(errorMessage || 'Unable to open payment form. Please retry.')
+    } finally {
+      setOpeningPaymentModal(false)
+      setRefreshingPaymentDetails(false)
     }
   }
 
@@ -191,12 +256,13 @@ const TaskDetail = () => {
     message.success('Payment successful! Your analysis will resume shortly.')
     dispatch(clearPaymentState())
     await dispatch(fetchTask(taskId))
+    setRefreshingPaymentDetails(false)
   }
 
   const handlePaymentCancel = () => {
     setPaymentModalVisible(false)
-    paymentPresentationRef.current = true
-    message.info('Payment is still pending. You can retry whenever you are ready.')
+    paymentPresentationRef.current = false
+    setRefreshingPaymentDetails(false)
   }
 
   const renderReport = (report) => {
@@ -234,18 +300,67 @@ const TaskDetail = () => {
   return (
     <div className="task-detail-page">
       {needsPayment && (
-        <Alert
-          type={paymentStatus === 'PAYMENT_FAILED' ? 'error' : 'warning'}
-          showIcon
-          message={paymentStatus === 'AWAITING_PAYMENT' ? 'Payment required to start analysis' : 'Payment attention required'}
-          description={currentTask?.errorMessage || 'Complete the payment to start the analysis.'}
-          action={
-            <Button type="primary" size="small" onClick={handleRetryPayment} loading={submitting}>
-              Resume Payment
+        <div className={`payment-banner ${
+          paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED ? 'payment-banner--error' :
+          isPaymentExpired ? 'payment-banner--expired' : ''
+        }`}>
+          <div className="payment-banner__content">
+            <div className="payment-banner__icon">
+              <CreditCardOutlined />
+            </div>
+            <div className="payment-banner__copy">
+              <div className="payment-banner__title">
+                {paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED && 'Payment failed - please try again'}
+                {isPaymentExpired && 'Payment link expired - generate a new one'}
+                {paymentStatus === PAYMENT_STATUS.AWAITING_PAYMENT && !isPaymentExpired && 'Complete payment to begin your analysis'}
+              </div>
+              {(() => {
+                const billingInfo = formatBillingAmount(billingAmount, billingCurrency)
+                return (
+                  <div className="payment-banner__meta">
+                    {billingInfo ? (
+                      <span className="payment-banner__amount">
+                        Amount due:&nbsp;
+                        <strong>{billingInfo.display}</strong>
+                        {billingBasis && (
+                          <span className="payment-banner__note">
+                            {billingBasis}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="payment-banner__amount">
+                        Amount due:&nbsp;
+                        <strong>Pending calculation</strong>
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
+              {refreshingPaymentDetails && (
+                <div className="payment-banner__hint">
+                  <Spin size="small" />
+                  <span>
+                    {isPaymentExpired ? 'Generating new payment link...' : 'Refreshing payment details...'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="payment-banner__actions">
+            <Button
+              type="primary"
+              size="large"
+              onClick={handleOpenPaymentModal}
+              loading={openingPaymentModal || refreshingPaymentDetails || submitting}
+              className="payment-banner__cta"
+            >
+              {paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED && 'Try Payment Again'}
+              {isPaymentExpired && 'Generate New Payment'}
+              {paymentStatus === PAYMENT_STATUS.AWAITING_PAYMENT && !isPaymentExpired && 'Complete Payment'}
             </Button>
-          }
-          style={{ marginBottom: 16 }}
-        />
+          </div>
+        </div>
       )}
       {/* Compact Header with integrated View Reports button */}
       <CompactHeader
@@ -263,6 +378,7 @@ const TaskDetail = () => {
             isProcessing={isProcessing}
             taskStatus={currentTask?.status}
             lastUpdateTime={lastPollingTime}
+            awaitingPayment={needsPayment}
             onViewReports={currentTask?.status === 'COMPLETED' ? handleViewReports : null}
           />
         </Col>
@@ -346,6 +462,12 @@ const TaskDetail = () => {
         taskId={pendingPaymentTaskId || taskId}
         amount={billingAmount}
         currency={billingCurrency}
+        researchDepth={(() => {
+          const depthValue = currentTask?.researchDepth ?? currentTask?.research_depth
+          const depthOption = RESEARCH_DEPTH_OPTIONS.find((option) => option.value === depthValue)
+          return depthOption?.label
+        })()}
+        analystCount={currentTask?.selectedAnalysts?.length ?? currentTask?.selected_analysts?.length}
         onSuccess={handlePaymentSuccess}
         onCancel={handlePaymentCancel}
       />

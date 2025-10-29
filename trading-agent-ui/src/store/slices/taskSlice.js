@@ -331,7 +331,12 @@ const taskSlice = createSlice({
     builder.addCase(retryTaskPayment.fulfilled, (state, action) => {
       state.submitting = false
       const payload = action.payload || {}
-      state.paymentRequired = Boolean(payload.paymentRequired || payload.payment_required || true)
+      const paymentRequiredValue = payload.paymentRequired
+      if (typeof paymentRequiredValue === 'boolean') {
+        state.paymentRequired = paymentRequiredValue
+      } else if (typeof payload.payment_required === 'boolean') {
+        state.paymentRequired = payload.payment_required
+      }
       state.paymentIntentId = payload.paymentIntentId || payload.payment_intent_id || null
       state.paymentClientSecret = payload.paymentClientSecret || payload.payment_client_secret || null
       const taskId = payload.taskId || payload.task_id || state.pendingPaymentTaskId

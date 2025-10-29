@@ -20,12 +20,6 @@ public class StripeProperties {
 
     private String webhookSecret;
 
-    @NotBlank
-    private String successUrl;
-
-    @NotBlank
-    private String cancelUrl;
-
     @NotNull
     private String defaultPricingCode = "DEFAULT";
 }

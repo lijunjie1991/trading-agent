@@ -17,6 +17,7 @@ const MessagePanel = ({
   isProcessing = false,
   taskStatus,
   lastUpdateTime,
+  awaitingPayment = false,
   onViewReports,
 }) => {
   const containerRef = useRef(null)
@@ -468,11 +469,12 @@ const MessagePanel = ({
       }
     }
     if (taskStatus === 'PENDING') {
+      const awaitingPaymentState = awaitingPayment
       return {
         icon: <ClockCircleOutlined className="pulse" style={{ fontSize: 16 }} />,
-        text: 'Queued for Processing',
-        badge: 'PENDING',
-        color: '#f59e0b',
+        text: awaitingPaymentState ? 'Awaiting Payment' : 'Queued for Processing',
+        badge: awaitingPaymentState ? 'PAYMENT' : 'PENDING',
+        color: awaitingPaymentState ? '#f97316' : '#f59e0b',
         showDots: false,
       }
     }

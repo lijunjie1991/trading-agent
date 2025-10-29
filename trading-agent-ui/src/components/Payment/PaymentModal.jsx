@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Modal, Alert, Button, Typography, Space } from 'antd'
+import { Modal, Alert, Button, Typography, Space, Divider, Tag } from 'antd'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
+import { CheckCircleOutlined, LoadingOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { getStripe } from '../../utils/stripe'
+import './PaymentModal.css'
 
 const { Text, Title } = Typography
 
@@ -20,11 +22,51 @@ const formatAmount = (amount, currency) => {
   return formatter.format(numericAmount)
 }
 
-const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel }) => {
+const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel, researchDepth, analystCount }) => {
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState(null)
+  const [paymentStep, setPaymentStep] = useState('ready') // ready, processing, verifying
+
+  const categorizeError = (error) => {
+    const errorMsg = error?.message || ''
+    const errorType = error?.type || ''
+
+    // Network errors
+    if (errorType === 'validation_error' || errorMsg.includes('network') || errorMsg.includes('connection')) {
+      return {
+        type: 'network',
+        title: 'Connection Issue',
+        message: errorMsg || 'Network connection lost. Please check your internet and try again.',
+      }
+    }
+
+    // Card errors
+    if (errorType === 'card_error' || errorMsg.includes('card') || errorMsg.includes('declined')) {
+      return {
+        type: 'card',
+        title: 'Card Issue',
+        message: errorMsg || 'Your card was declined. Please check your card details or try another payment method.',
+      }
+    }
+
+    // API errors
+    if (errorMsg.includes('API') || errorMsg.includes('server') || errorMsg.includes('timeout')) {
+      return {
+        type: 'api',
+        title: 'Server Issue',
+        message: 'Server took too long to respond. Please try again in a moment.',
+      }
+    }
+
+    // Generic Stripe errors
+    return {
+      type: 'stripe',
+      title: 'Payment Error',
+      message: errorMsg || 'Unable to process payment. Please try again.',
+    }
+  }
 
   const handleSubmit = useCallback(async (event) => {
     event.preventDefault()
@@ -33,6 +75,8 @@ const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel }) => {
     }
     setSubmitting(true)
     setErrorMessage(null)
+    setPaymentStep('processing')
+
     try {
       const returnUrl = taskId ? `${window.location.origin}/tasks/${taskId}` : window.location.href
 
@@ -45,61 +89,157 @@ const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel }) => {
       })
 
       if (error) {
-        setErrorMessage(error.message || 'Unable to confirm payment. Please try again.')
+        const categorized = categorizeError(error)
+        setErrorMessage(categorized)
+        setPaymentStep('ready')
         return
       }
 
-      if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'processing') {
+      if (paymentIntent?.status === 'succeeded') {
+        setPaymentStep('ready')
         onSuccess?.(paymentIntent)
+      } else if (paymentIntent?.status === 'processing') {
+        setPaymentStep('verifying')
+        // Wait a moment to show the verification state
+        setTimeout(() => {
+          onSuccess?.(paymentIntent)
+        }, 800)
       } else {
-        setErrorMessage('Payment requires additional action. Please try again.')
+        setErrorMessage({
+          type: 'stripe',
+          title: 'Additional Action Required',
+          message: 'Payment requires additional verification. Please follow the instructions from your bank.',
+        })
+        setPaymentStep('ready')
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Unexpected payment error. Please retry.')
+      const categorized = categorizeError(err)
+      setErrorMessage(categorized)
+      setPaymentStep('ready')
     } finally {
       setSubmitting(false)
     }
   }, [stripe, elements, onSuccess, taskId])
 
+  const renderPaymentSteps = () => {
+    const steps = [
+      { key: 'processing', label: 'Processing payment', icon: paymentStep === 'processing' ? <LoadingOutlined /> : null },
+      { key: 'verifying', label: 'Verifying with bank', icon: paymentStep === 'verifying' ? <LoadingOutlined /> : null },
+      { key: 'starting', label: 'Starting analysis', icon: null },
+    ]
+
+    return (
+      <div className="payment-steps">
+        {steps.map((step, index) => {
+          const isActive =
+            (step.key === 'processing' && paymentStep === 'processing') ||
+            (step.key === 'verifying' && paymentStep === 'verifying')
+          const isCompleted =
+            (step.key === 'processing' && (paymentStep === 'verifying')) ||
+            (step.key === 'verifying' && paymentStep === 'starting')
+
+          return (
+            <div key={step.key} className={`payment-step ${isActive ? 'payment-step--active' : ''} ${isCompleted ? 'payment-step--completed' : ''}`}>
+              <div className="payment-step__indicator">
+                {isCompleted ? (
+                  <CheckCircleOutlined />
+                ) : isActive ? (
+                  step.icon
+                ) : (
+                  <span className="payment-step__number">{index + 1}</span>
+                )}
+              </div>
+              <span className="payment-step__label">{step.label}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <div>
-          <Title level={4} style={{ marginBottom: 4 }}>
-            Complete Payment
-          </Title>
-          <Text type="secondary">
-            {amount !== null && amount !== undefined
-              ? `Amount due: ${formatAmount(amount, currency)}`
-              : 'Please complete the payment to proceed.'}
-          </Text>
+    <form onSubmit={handleSubmit} className="payment-form">
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        {/* Payment Breakdown */}
+        <div className="payment-breakdown">
+          <div className="payment-breakdown__header">
+            <Title level={5} style={{ margin: 0 }}>Payment Summary</Title>
+            <Tag color="blue">Secure Payment</Tag>
+          </div>
+          <Divider style={{ margin: '12px 0' }} />
+          <div className="payment-breakdown__items">
+            {researchDepth && (
+              <div className="payment-breakdown__item">
+                <Text type="secondary">Research Depth</Text>
+                <Text strong>{researchDepth}</Text>
+              </div>
+            )}
+            {analystCount !== undefined && analystCount !== null && (
+              <div className="payment-breakdown__item">
+                <Text type="secondary">Analysts Selected</Text>
+                <Text strong>{analystCount} analyst{analystCount !== 1 ? 's' : ''}</Text>
+              </div>
+            )}
+            <Divider style={{ margin: '8px 0' }} />
+            <div className="payment-breakdown__item payment-breakdown__total">
+              <Text strong style={{ fontSize: '16px' }}>Total Amount</Text>
+              <Text strong style={{ fontSize: '20px', color: '#4338ca' }}>
+                {amount !== null && amount !== undefined
+                  ? formatAmount(amount, currency)
+                  : 'Calculating...'}
+              </Text>
+            </div>
+          </div>
         </div>
 
         <PaymentElement options={{ layout: 'tabs' }} />
+
+        {/* Payment Progress Steps */}
+        {submitting && renderPaymentSteps()}
 
         {errorMessage && (
           <Alert
             type="error"
             showIcon
-            message={errorMessage}
+            icon={<ExclamationCircleOutlined />}
+            message={errorMessage.title}
+            description={
+              <Space direction="vertical" size="small">
+                <Text>{errorMessage.message}</Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  {errorMessage.type === 'network' && 'Check your internet connection and try again.'}
+                  {errorMessage.type === 'card' && 'Update your payment details above or try another payment method.'}
+                  {errorMessage.type === 'api' && 'Our servers are experiencing high traffic. Please wait a moment.'}
+                  {errorMessage.type === 'stripe' && 'If the issue persists, please contact support.'}
+                </Text>
+              </Space>
+            }
+            className="payment-error-alert"
           />
         )}
 
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={submitting}
-          block
-        >
-          Confirm Payment
-        </Button>
-        <Button
-          onClick={onCancel}
-          disabled={submitting}
-          block
-        >
-          Cancel
-        </Button>
+        <div className="payment-actions">
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={submitting}
+            disabled={!stripe || !elements}
+            size="large"
+            block
+            className="payment-confirm-button"
+          >
+            {submitting ? 'Processing...' : 'Confirm Payment'}
+          </Button>
+          <Button
+            onClick={onCancel}
+            disabled={submitting}
+            size="large"
+            block
+            className="payment-cancel-button"
+          >
+            Cancel
+          </Button>
+        </div>
       </Space>
     </form>
   )
@@ -120,6 +260,8 @@ const PaymentModal = ({
   taskId,
   amount,
   currency,
+  researchDepth,
+  analystCount,
   onSuccess,
   onCancel,
 }) => {
@@ -131,32 +273,59 @@ const PaymentModal = ({
       clientSecret,
       appearance: {
         theme: 'stripe',
+        variables: {
+          colorPrimary: '#4338ca',
+          borderRadius: '12px',
+        },
       },
+      locale: 'en',
     }
   }, [clientSecret])
 
   return (
     <Modal
       open={open}
-      title="Payment Required"
+      title={
+        <div className="payment-modal-header">
+          <div className="payment-modal-header__icon">
+            <CheckCircleOutlined />
+          </div>
+          <div>
+            <div className="payment-modal-header__title">Complete Your Payment</div>
+            <div className="payment-modal-header__subtitle">
+              Secure checkout powered by Stripe
+            </div>
+          </div>
+        </div>
+      }
       footer={null}
       onCancel={onCancel}
       destroyOnClose
       maskClosable={false}
       centered
+      width={580}
+      className="payment-modal"
     >
       {stripeInitializationError ? (
         <Alert
           type="error"
           showIcon
-          message="Stripe is not configured. Please contact support."
-          description={stripeInitializationError.message}
+          message="Stripe is not configured"
+          description={
+            <Space direction="vertical" size="small">
+              <Text>{stripeInitializationError.message}</Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                Please contact support for assistance.
+              </Text>
+            </Space>
+          }
         />
       ) : !clientSecret ? (
         <Alert
           type="warning"
           showIcon
-          message="Payment details are not available. Please retry."
+          message="Payment details are not available"
+          description="Please close this dialog and try again. If the issue persists, contact support."
         />
       ) : (
         <Elements stripe={stripePromise} options={elementsOptions}>
@@ -164,6 +333,8 @@ const PaymentModal = ({
             amount={amount}
             currency={currency}
             taskId={taskId}
+            researchDepth={researchDepth}
+            analystCount={analystCount}
             onSuccess={onSuccess}
             onCancel={onCancel}
           />

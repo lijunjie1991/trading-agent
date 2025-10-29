@@ -1,8 +1,21 @@
 import { useEffect } from 'react'
-import { Form, Input, DatePicker, Select, Checkbox, Button, Card, Typography, Space, Alert, Spin, Divider } from 'antd'
+import {
+  Form,
+  Input,
+  DatePicker,
+  Select,
+  Checkbox,
+  Button,
+  Card,
+  Typography,
+  Spin,
+  Divider,
+  Tag,
+} from 'antd'
 import { RocketOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
+import './TaskForm.css'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -50,108 +63,163 @@ const TaskForm = ({
     })
   }
 
-  const renderBillingSummary = () => {
+  const renderBillingSummaryCard = () => {
     if (billingLoading) {
       return (
-        <Alert
-          message="Loading billing information..."
-          description={<Spin size="small" />}
-          type="info"
-          showIcon
-        />
+        <div className="task-form__summary-card task-form__summary-card--loading">
+          <Spin size="small" />
+          <span>Loading billing overview...</span>
+        </div>
       )
     }
 
     if (!billingSummary) {
-      return null
+      return (
+        <div className="task-form__summary-card task-form__summary-card--placeholder">
+          <Text type="secondary">Billing summary is currently unavailable.</Text>
+        </div>
+      )
     }
 
-    const remaining = billingSummary.freeQuotaRemaining ?? billingSummary.freeQuotaTotal
-    const total = billingSummary.freeQuotaTotal ?? 0
+    const remaining = Number(
+      billingSummary.freeQuotaRemaining ?? billingSummary.freeQuotaTotal ?? 0
+    )
+    const total = Number(billingSummary.freeQuotaTotal ?? 0)
+    const hasFreeCredits = remaining > 0
 
     return (
-      <Alert
-        type={remaining > 0 ? 'success' : 'info'}
-        showIcon
-        message={remaining > 0 ? 'Free analysis credits available' : 'Free credits exhausted'}
-        description={
-          <Space direction="vertical" size={4} style={{ fontSize: 13 }}>
-            <span>
-              Free credits remaining: <strong>{remaining}</strong>{typeof total === 'number' ? ` / ${total}` : ''}
-            </span>
-            {typeof billingSummary.paidTaskCount === 'number' && (
-              <span>
-                Paid analyses completed: <strong>{billingSummary.paidTaskCount}</strong>
-              </span>
-            )}
-          </Space>
-        }
-        style={{ marginBottom: 16 }}
-      />
+      <div
+        className={`task-form__summary-card ${
+          hasFreeCredits ? 'task-form__summary-card--available' : 'task-form__summary-card--exhausted'
+        }`}
+      >
+        <div className="task-form__summary-card-header">
+          <span
+            className={`task-form__summary-card-tag ${
+              hasFreeCredits ? 'task-form__summary-card-tag--success' : 'task-form__summary-card-tag--warning'
+            }`}
+          >
+            {hasFreeCredits ? 'Available' : 'Exhausted'}
+          </span>
+        </div>
+        <div className="task-form__summary-card-value">
+          {hasFreeCredits ? (
+            <>
+              <span className="task-form__summary-card-highlight">{remaining}</span>
+              <span className="task-form__summary-card-text"> credit{remaining === 1 ? '' : 's'} remaining</span>
+            </>
+          ) : (
+            'No credits left'
+          )}
+        </div>
+        <div className="task-form__summary-card-meta">
+          <span>Total credits: {total}</span>
+          {typeof billingSummary.paidTaskCount === 'number' && (
+            <span>Paid analyses: {billingSummary.paidTaskCount}</span>
+          )}
+        </div>
+        {hasFreeCredits && (
+          <div className="task-form__summary-card-tip">
+            This analysis may use your free credit
+          </div>
+        )}
+      </div>
     )
   }
 
-  const renderQuote = () => {
+  const renderQuoteCard = () => {
     if (quoteLoading) {
       return (
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Space><Spin size="small" /><span>Calculating estimated cost...</span></Space>
-        </Card>
+        <div className="task-form__summary-card task-form__summary-card--loading">
+          <Spin size="small" />
+          <span>Calculating estimated charge...</span>
+        </div>
       )
     }
 
     if (!quote) {
       return (
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Adjust analysis depth or analysts to preview pricing.
-          </Text>
-        </Card>
+        <div className="task-form__summary-card task-form__summary-card--placeholder">
+          <Text type="secondary">Adjust depth or analyst mix to preview pricing.</Text>
+        </div>
       )
     }
 
-    const isFree = quote.eligibleForFreeQuota
+    const isFree = Boolean(quote.eligibleForFreeQuota)
     const numericAmount = Number(quote.totalAmount ?? 0)
-    const amountDisplay = Number.isFinite(numericAmount) ? numericAmount.toFixed(2) : quote.totalAmount
+    const amountDisplay = Number.isFinite(numericAmount)
+      ? numericAmount.toFixed(2)
+      : quote.totalAmount
     const currency = quote.currency || billingSummary?.currency || 'USD'
 
     return (
-      <Card size="small" style={{ marginBottom: 16, borderColor: isFree ? '#34d399' : '#6366f1' }}>
-        <Space direction="vertical" size={6} style={{ width: '100%' }}>
-          <Text strong style={{ color: isFree ? '#059669' : '#312e81' }}>
-            {isFree ? 'This task can use a free analysis credit.' : 'Estimated charge for this task'}
-          </Text>
-          {!isFree && (
-            <Title level={4} style={{ margin: 0, color: '#111827' }}>
-              {amountDisplay} {currency}
-            </Title>
+      <div
+        className={`task-form__summary-card task-form__summary-card--quote ${
+          isFree ? 'task-form__summary-card--quote-free' : ''
+        }`}
+      >
+        <div className="task-form__summary-card-header">
+          <div className="task-form__summary-card-title">
+            {isFree ? 'Free Analysis' : 'Estimated Charge'}
+          </div>
+        </div>
+        <div className="task-form__summary-card-amount">
+          {isFree ? (
+            <div className="task-form__free-badge">
+              <span className="task-form__free-badge-text">FREE</span>
+            </div>
+          ) : (
+            <>
+              <span className="task-form__amount-value">{amountDisplay}</span>
+              <span className="task-form__amount-currency">{currency}</span>
+            </>
           )}
-          <Divider style={{ margin: '8px 0' }} />
-          <Space wrap size={[12, 12]}> 
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Research Depth: <strong>{quote.researchDepth}</strong>
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Analysts Selected: <strong>{quote.analystCount}</strong>
-            </Text>
-          </Space>
-        </Space>
-      </Card>
+        </div>
+        <Divider className="task-form__summary-card-divider" />
+        <div className="task-form__summary-card-details">
+          <Tag color={isFree ? 'green' : 'blue'}>
+            {quote.researchDepth} depth
+          </Tag>
+          <Tag color={isFree ? 'green' : 'blue'}>
+            {quote.analystCount} analyst{quote.analystCount !== 1 ? 's' : ''}
+          </Tag>
+        </div>
+        {isFree && (
+          <div className="task-form__summary-card-tip task-form__summary-card-tip--free">
+            One free credit will be used for this analysis
+          </div>
+        )}
+      </div>
     )
   }
 
   return (
-    <Card>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        <RocketOutlined /> Start New Analysis
-      </Title>
+    <Card className="task-form">
+      <div className="task-form__hero">
+        <div className="task-form__hero-icon">
+          <RocketOutlined />
+        </div>
+        <div>
+          <Title level={3} className="task-form__hero-title">
+            New Market Analysis
+          </Title>
+          <Text type="secondary" className="task-form__hero-subtitle">
+            Configure your analysis parameters. Our AI agents will handle the research and provide actionable insights.
+          </Text>
+        </div>
+      </div>
 
-      {renderBillingSummary()}
-      {renderQuote()}
+      <div className="task-form__summary-grid">
+        {renderBillingSummaryCard()}
+        {renderQuoteCard()}
+      </div>
+
+      <Divider className="task-form__divider" />
 
       <Form
         form={form}
         layout="vertical"
+        className="task-form__form"
         onFinish={handleSubmit}
         onValuesChange={handleValuesChange}
         initialValues={{
@@ -161,66 +229,76 @@ const TaskForm = ({
         }}
         autoComplete="off"
       >
-        <Form.Item
-          label="Ticker Symbol"
-          name="ticker"
-          rules={[
-            { required: true, message: 'Please input ticker symbol!' },
-            {
-              pattern: /^[A-Za-z]{1,5}$/,
-              message: 'Ticker must be 1-5 letters!',
-            },
-          ]}
-        >
-          <Input
-            placeholder="e.g., NVDA, AAPL, TSLA"
-            size="large"
-            style={{ textTransform: 'uppercase' }}
-          />
-        </Form.Item>
+        <div className="task-form__field-grid">
+          <Form.Item
+            label="Ticker Symbol"
+            name="ticker"
+            rules={[
+              { required: true, message: 'Please input ticker symbol.' },
+              {
+                pattern: /^[A-Za-z]{1,5}$/,
+                message: 'Ticker must be 1-5 letters.',
+              },
+            ]}
+          >
+            <Input
+              placeholder="e.g., NVDA, AAPL, TSLA"
+              size="large"
+              style={{ textTransform: 'uppercase' }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Analysis Date"
+            name="analysisDate"
+            rules={[{ required: true, message: 'Please select analysis date.' }]}
+          >
+            <DatePicker
+              size="large"
+              style={{ width: '100%' }}
+              format="YYYY-MM-DD"
+            />
+          </Form.Item>
+        </div>
 
         <Form.Item
-          label="Analysis Date"
-          name="analysisDate"
-          rules={[{ required: true, message: 'Please select analysis date!' }]}
-        >
-          <DatePicker
-            size="large"
-            style={{ width: '100%' }}
-            format="YYYY-MM-DD"
-          />
-        </Form.Item>
-
-        <Form.Item
-          label="Research Depth"
+          label={(
+            <div className="task-form__label">
+              <span>Research Depth</span>
+              <span className="task-form__label-hint">Higher depth provides more thorough analysis.</span>
+            </div>
+          )}
           name="researchDepth"
-          rules={[{ required: true, message: 'Please select research depth!' }]}
-          extra="Higher depth means more thorough analysis but takes longer"
+          rules={[{ required: true, message: 'Please select research depth.' }]}
         >
           <Select size="large" placeholder="Select research depth">
             {RESEARCH_DEPTH_OPTIONS.map((option) => (
               <Option key={option.value} value={option.value}>
-                {option.label} - {option.description}
+                {option.label} — {option.description}
               </Option>
             ))}
           </Select>
         </Form.Item>
 
         <Form.Item
-          label="Select Analysts"
+          label={(
+            <div className="task-form__label">
+              <span>Analysts</span>
+              <span className="task-form__label-hint">Select which specialists should contribute to the analysis.</span>
+            </div>
+          )}
           name="selectedAnalysts"
           rules={[
             {
               required: true,
-              message: 'Please select at least one analyst!',
+              message: 'Please select at least one analyst.',
             },
           ]}
-          extra="Select which analysts to include in the analysis"
         >
-          <Checkbox.Group options={analystOptions} style={{ display: 'flex', flexDirection: 'column', gap: 8 }} />
+          <Checkbox.Group options={analystOptions} className="task-form__checkbox-group" />
         </Form.Item>
 
-        <Form.Item style={{ marginTop: 32 }}>
+        <Form.Item className="task-form__cta">
           <Button
             type="primary"
             htmlType="submit"
@@ -228,15 +306,9 @@ const TaskForm = ({
             size="large"
             block
             icon={<RocketOutlined />}
-            style={{
-              height: 50,
-              fontSize: 16,
-              fontWeight: 600,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-            }}
+            className="task-form__cta-button"
           >
-            {loading ? 'Starting Analysis...' : 'Start Analysis'}
+            {loading ? 'Starting analysis...' : 'Start Analysis'}
           </Button>
         </Form.Item>
       </Form>

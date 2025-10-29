@@ -47,8 +47,6 @@ stripe:
   secret-key: ${STRIPE_SECRET_KEY:}
   publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-  success-url: ${STRIPE_SUCCESS_URL:https://sandbox.quantumhusky.ai/billing/success}
-  cancel-url: ${STRIPE_CANCEL_URL:https://sandbox.quantumhusky.ai/billing/cancel}
   default-pricing-code: ${BILLING_DEFAULT_PRICING_CODE:DEFAULT}
 
 # Server Configuration

@@ -48,8 +48,6 @@ stripe:
   secret-key: ${STRIPE_SECRET_KEY:sk_test_51SKMM2J3N6QMImyOls9TqpQTphljl0tFRAPydQbwo8VF52exksrE08DyXtWq9XVHqTyY1SiOnfYtwCWPehgTSIDx006X7C2tH2}
   publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_51SKMM2J3N6QMImyOoRKmtnccq1tPRc8eEfs5aIxpTLAvPp6TtWfbVgMDPqaRLArZnrrPp84dEHePVApsaIov9U4D00s8c2xyXH}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_cfb971496aee47e924ed33d262f1ab777beadb7c24fadbcc7ec80eb7111cd378}
-  success-url: ${STRIPE_SUCCESS_URL:http://localhost:3000/billing/success}
-  cancel-url: ${STRIPE_CANCEL_URL:http://localhost:3000/billing/cancel}
   default-pricing-code: ${BILLING_DEFAULT_PRICING_CODE:DEFAULT}
 
 # Server Configuration

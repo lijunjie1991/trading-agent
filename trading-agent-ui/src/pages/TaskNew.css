@@ -1,0 +1,25 @@
+.task-new-page {
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px 60px;
+  background: #fafafa;
+  min-height: calc(100vh - 64px);
+}
+
+.task-new-container {
+  width: 100%;
+  max-width: 720px;
+}
+
+.task-new-alert {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+@media (max-width: 768px) {
+  .task-new-page {
+    padding: 24px 16px 40px;
+  }
+}
