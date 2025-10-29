@@ -104,6 +104,8 @@ services:
     restart: unless-stopped
     ports:
       - "${UI_PORT:-80}:80"
+    environment:
+      VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
     depends_on:
       - api
     networks:
