@@ -77,7 +77,7 @@ public class TaskService {
 
     Task task = Task.builder()
         .taskId(taskId)
-        .user(currentUser)
+        .userId(currentUser.getId())
         .ticker(request.getTicker())
         .analysisDate(LocalDate.parse(request.getAnalysisDate()))
         .selectedAnalysts(toJson(request.getSelectedAnalysts()))
@@ -139,10 +139,12 @@ public class TaskService {
   @Transactional(rollbackFor = Exception.class)
   public TaskResponse retryPayment(String taskId) {
     User currentUser = authService.getCurrentUser();
-    Task task = taskRepository.findByTaskId(taskId)
-        .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
+    Task task = taskRepository.findByTaskId(taskId);
+    if (task == null) {
+      throw new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId);
+    }
 
-    if (!task.getUser().getId().equals(currentUser.getId())) {
+    if (!task.getUserId().equals(currentUser.getId())) {
       throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
     }
     if (PaymentStatus.PAID.equals(task.getPaymentStatus()) || PaymentStatus.FREE.equals(task.getPaymentStatus())) {
@@ -157,7 +159,9 @@ public class TaskService {
     );
     String snapshot = taskBillingService.buildPricingSnapshot(quote);
 
-    TaskPayment existingPayment = task.getPayment();
+    TaskPayment existingPayment = task.getPaymentId() != null
+        ? taskPaymentService.getPaymentById(task.getPaymentId())
+        : null;
     if (existingPayment != null && existingPayment.getStripePaymentIntentId() != null) {
       stripeClient.cancelPaymentIntent(existingPayment.getStripePaymentIntentId());
     }
@@ -230,11 +234,13 @@ public class TaskService {
   }
 
   public TaskResponse getTaskById(String taskId) {
-    Task task = taskRepository.findByTaskId(taskId)
-        .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
+    Task task = taskRepository.findByTaskId(taskId);
+    if (task == null) {
+      throw new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId);
+    }
 
     User currentUser = authService.getCurrentUser();
-    if (!task.getUser().getId().equals(currentUser.getId())) {
+    if (!task.getUserId().equals(currentUser.getId())) {
       throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
     }
 
@@ -242,11 +248,13 @@ public class TaskService {
   }
 
   public List<Map<String, Object>> getTaskReports(String taskId) {
-    Task task = taskRepository.findByTaskId(taskId)
-        .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
+    Task task = taskRepository.findByTaskId(taskId);
+    if (task == null) {
+      throw new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId);
+    }
 
     User currentUser = authService.getCurrentUser();
-    if (!task.getUser().getId().equals(currentUser.getId())) {
+    if (!task.getUserId().equals(currentUser.getId())) {
       throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
     }
 
@@ -295,11 +303,13 @@ public class TaskService {
   }
 
   public List<Map<String, Object>> getTaskMessages(String taskId, String lastTimestamp) {
-    Task task = taskRepository.findByTaskId(taskId)
-        .orElseThrow(() -> new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId));
+    Task task = taskRepository.findByTaskId(taskId);
+    if (task == null) {
+      throw new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId);
+    }
 
     User currentUser = authService.getCurrentUser();
-    if (!task.getUser().getId().equals(currentUser.getId())) {
+    if (!task.getUserId().equals(currentUser.getId())) {
       throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
     }
 
@@ -388,7 +398,9 @@ public class TaskService {
 
     String paymentIntentId = null;
     String paymentClientSecret = null;
-    TaskPayment payment = task.getPayment();
+    TaskPayment payment = task.getPaymentId() != null
+        ? taskPaymentService.getPaymentById(task.getPaymentId())
+        : null;
     if (payment != null) {
       paymentIntentId = payment.getStripePaymentIntentId();
       if (requiresPayment && paymentIntentId != null) {

@@ -32,8 +32,8 @@ public class TaskPaymentService {
         TaskPayment payment = taskPaymentRepository.findByTaskTaskId(task.getTaskId());
         if (payment == null) {
             payment = TaskPayment.builder()
-                    .task(task)
-                    .user(task.getUser())
+                    .taskId(task.getId())
+                    .userId(task.getUserId())
                     .status(PaymentStatus.AWAITING_PAYMENT)
                     .isFree(Boolean.FALSE)
                     .build();
@@ -48,7 +48,7 @@ public class TaskPaymentService {
         payment.setCurrency(quote.getCurrency());
         payment.setPricingSnapshot(pricingSnapshot);
         payment = taskPaymentRepository.save(payment);
-        task.setPayment(payment);
+        task.setPaymentId(payment.getId());
         task.setBillingAmount(quote.getTotalAmount());
         task.setBillingCurrency(quote.getCurrency());
         task.setPricingSnapshot(pricingSnapshot);
@@ -57,6 +57,11 @@ public class TaskPaymentService {
         task.setErrorMessage(null);
         taskRepository.save(task);
         return payment;
+    }
+
+    @Transactional(readOnly = true)
+    public TaskPayment getPaymentById(Long paymentId) {
+        return taskPaymentRepository.findById(paymentId).orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -96,12 +101,13 @@ public class TaskPaymentService {
         payment.setStripeClientSecret(null);
         taskPaymentRepository.save(payment);
 
-        Task task = payment.getTask();
+        Task task = taskRepository.findById(payment.getTaskId())
+                .orElseThrow(() -> new BusinessException(ResultCode.TASK_NOT_FOUND, "Task not found"));
         task.setPaymentStatus(PaymentStatus.PAID);
         task.setErrorMessage(null);
         taskRepository.save(task);
 
-        taskBillingService.incrementPaidTaskCount(task.getUser());
+        taskBillingService.incrementPaidTaskCountByUserId(task.getUserId());
     }
 
     @Transactional
@@ -114,7 +120,8 @@ public class TaskPaymentService {
         payment.setStripeClientSecret(null);
         taskPaymentRepository.save(payment);
 
-        Task task = payment.getTask();
+        Task task = taskRepository.findById(payment.getTaskId())
+                .orElseThrow(() -> new BusinessException(ResultCode.TASK_NOT_FOUND, "Task not found"));
         task.setPaymentStatus(PaymentStatus.PAYMENT_FAILED);
         if (reason != null && !reason.isBlank()) {
             task.setErrorMessage(reason);
@@ -132,7 +139,8 @@ public class TaskPaymentService {
         payment.setStripeClientSecret(null);
         taskPaymentRepository.save(payment);
 
-        Task task = payment.getTask();
+        Task task = taskRepository.findById(payment.getTaskId())
+                .orElseThrow(() -> new BusinessException(ResultCode.TASK_NOT_FOUND, "Task not found"));
         task.setPaymentStatus(PaymentStatus.PAYMENT_EXPIRED);
         task.setErrorMessage("Payment intent canceled before completion");
         taskRepository.save(task);

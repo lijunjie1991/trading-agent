@@ -61,6 +61,17 @@ public class TaskBillingService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public void incrementPaidTaskCountByUserId(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ResultCode.INTERNAL_SERVER_ERROR, "User not found"));
+        user.setPaidTaskCount(user.getPaidTaskCount() + 1);
+        userRepository.save(user);
+    }
+
     public String buildPricingSnapshot(PricingQuote quote) {
         if (quote == null) {
             return null;

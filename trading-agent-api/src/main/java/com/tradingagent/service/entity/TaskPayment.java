@@ -24,13 +24,11 @@ public class TaskPayment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private Task task;
+    @Column(name = "task_id", nullable = false)
+    private Long taskId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(name = "stripe_payment_intent_id", length = 255)
     private String stripePaymentIntentId;

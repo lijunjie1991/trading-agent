@@ -36,7 +36,7 @@ public class StripeClient {
               .setAmount(convertAmountToMinorUnits(quote.getTotalAmount()))
               .setDescription(buildProductDescription(task, quote))
               .putMetadata("taskId", task.getTaskId())
-              .putMetadata("userId", task.getUser().getId().toString())
+              .putMetadata("userId", task.getUserId().toString())
               .putMetadata("ticker", task.getTicker())
               .setAutomaticPaymentMethods(
                   PaymentIntentCreateParams.AutomaticPaymentMethods.builder()

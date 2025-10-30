@@ -11,12 +11,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
-    Optional<Task> findByTaskId(String taskId);
+    Task findByTaskId(String taskId);
 
     List<Task> findByUserIdOrderByCreatedAtDesc(Long userId);
 
@@ -26,13 +25,13 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
      * Get task statistics grouped by status in a single query
      * Returns List of Object[] where [0] = status, [1] = count
      */
-    @Query("SELECT t.status, COUNT(t) FROM Task t WHERE t.user.id = :userId GROUP BY t.status")
+    @Query("SELECT t.status, COUNT(t) FROM Task t WHERE t.userId = :userId GROUP BY t.status")
     List<Object[]> countTasksByStatusGrouped(@Param("userId") Long userId);
 
     /**
      * Find tasks with pagination and dynamic filtering
      */
-    @Query("SELECT t FROM Task t WHERE t.user.id = :userId " +
+    @Query("SELECT t FROM Task t WHERE t.userId = :userId " +
             "AND (:status IS NULL OR t.status = :status) " +
             "AND (:ticker IS NULL OR LOWER(t.ticker) LIKE LOWER(CONCAT('%', :ticker, '%'))) " +
             "AND (:taskId IS NULL OR t.taskId = :taskId) " +

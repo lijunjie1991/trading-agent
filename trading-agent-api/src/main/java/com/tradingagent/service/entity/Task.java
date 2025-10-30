@@ -12,8 +12,6 @@ import com.tradingagent.service.entity.enums.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "tasks")
@@ -30,9 +28,8 @@ public class Task {
     @Column(name = "task_id", unique = true, nullable = false, length = 36)
     private String taskId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(nullable = false, length = 20)
     private String ticker;
@@ -59,13 +56,6 @@ public class Task {
 
     @Column(name = "raw_error_message", columnDefinition = "TEXT")
     private String rawErrorMessage;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "completed_at")
-    private LocalDateTime completedAt;
 
     // Statistics fields for real-time tracking
     @Column(name = "tool_calls", nullable = false)
@@ -100,11 +90,13 @@ public class Task {
     @Column(name = "pricing_snapshot", columnDefinition = "TEXT")
     private String pricingSnapshot;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id")
-    private TaskPayment payment;
+    @Column(name = "payment_id")
+    private Long paymentId;
 
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Report> reportList = new ArrayList<>();
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 }

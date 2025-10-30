@@ -72,8 +72,10 @@ public class AuthService {
         String token = tokenProvider.generateToken(authentication);
 
         // Get user details
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BusinessException(ResultCode.INVALID_CREDENTIALS));
+        User user = userRepository.findByEmail(request.getEmail());
+        if (user == null) {
+            throw new BusinessException(ResultCode.INVALID_CREDENTIALS);
+        }
 
         return AuthResponse.builder()
                 .token(token)
@@ -85,7 +87,10 @@ public class AuthService {
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(ResultCode.INVALID_CREDENTIALS));
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new BusinessException(ResultCode.INVALID_CREDENTIALS);
+        }
+        return user;
     }
 }

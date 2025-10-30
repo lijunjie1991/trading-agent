@@ -21,9 +21,8 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id", nullable = false)
-    private Task task;
+    @Column(name = "task_id", nullable = false)
+    private Long taskId;
 
     @Column(name = "report_type", nullable = false, length = 50)
     private String reportType;
