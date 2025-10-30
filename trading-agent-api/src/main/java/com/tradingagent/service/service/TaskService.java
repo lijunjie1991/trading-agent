@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.tradingagent.service.util.JsonUtil;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -61,27 +62,16 @@ import java.util.stream.Collectors;
 @Service
 public class TaskService {
 
-  @Resource
-  private TaskRepository taskRepository;
-  @Resource
-  private ReportRepository reportRepository;
-  @Resource
-  private TaskMessageRepository taskMessageRepository;
-  @Resource
-  private PythonServiceClient pythonServiceClient;
-  @Resource
-  private AuthService authService;
-  @Resource
-  private PricingService pricingService;
-  @Resource
-  private TaskBillingService taskBillingService;
-  @Resource
-  private TaskPaymentService taskPaymentService;
-  @Resource
-  private StripeClient stripeClient;
-  @Resource
-  @Lazy
-  private TaskService self;
+  @Resource private TaskRepository taskRepository;
+  @Resource private ReportRepository reportRepository;
+  @Resource private TaskMessageRepository taskMessageRepository;
+  @Resource private PythonServiceClient pythonServiceClient;
+  @Resource private AuthService authService;
+  @Resource private PricingService pricingService;
+  @Resource private TaskBillingService taskBillingService;
+  @Resource private TaskPaymentService taskPaymentService;
+  @Resource private StripeClient stripeClient;
+  @Resource @Lazy private TaskService self;
 
   // ==================== Public API Methods ====================
 
@@ -280,12 +270,61 @@ public class TaskService {
    * Get detailed information for a specific task.
    *
    * @param taskId The task UUID
-   * @return Task response with complete details
+   * @return Task response with complete details including refreshed payment client secret
    */
   public TaskResponse getTaskById(String taskId) {
     Task task = getTaskAndValidateAccess(taskId);
 
-    return toTaskResponse(task);
+    // Refresh client secret for single task queries to ensure payment can proceed
+    return toTaskResponse(task, true);
+  }
+
+  /**
+   * Refresh and get payment client secret for a task.
+   *
+   * <p>This endpoint allows clients to obtain a fresh payment client secret without querying the
+   * entire task details. Useful when the client secret has expired or is missing.
+   *
+   * <p>Only returns client secret for tasks that require payment (AWAITING_PAYMENT, PAYMENT_FAILED,
+   * PAYMENT_EXPIRED status).
+   *
+   * @param taskId The task UUID
+   * @return Map containing paymentIntentId and clientSecret
+   */
+  public Map<String, String> refreshPaymentClientSecret(String taskId) {
+    Task task = getTaskAndValidateAccess(taskId);
+
+    // Verify task requires payment
+    boolean requiresPayment = false;
+    if (task.getPaymentStatus() != null) {
+      requiresPayment =
+          switch (task.getPaymentStatus()) {
+            case AWAITING_PAYMENT, PAYMENT_FAILED, PAYMENT_EXPIRED -> true;
+            default -> false;
+          };
+    }
+
+    if (!requiresPayment) {
+      throw new BusinessException(
+          ResultCode.INVALID_PARAMETER,
+          "Task does not require payment. Current status: " + task.getPaymentStatus());
+    }
+
+    // Get payment and refresh client secret
+    TaskPayment payment = taskPaymentService.getPaymentById(task.getPaymentId());
+    if (payment == null || payment.getStripePaymentIntentId() == null) {
+      throw new BusinessException(
+          ResultCode.PAYMENT_NOT_FOUND, "Payment information not found for task: " + taskId);
+    }
+
+    String paymentIntentId = payment.getStripePaymentIntentId();
+    String clientSecret = stripeClient.refreshClientSecret(paymentIntentId);
+    taskPaymentService.updatePaymentIntent(payment, paymentIntentId, clientSecret);
+
+    Map<String, String> result = new java.util.HashMap<>();
+    result.put("paymentIntentId", paymentIntentId);
+    result.put("clientSecret", clientSecret);
+    return result;
   }
 
   /**
@@ -371,7 +410,7 @@ public class TaskService {
    * <p>Supports incremental updates by providing lastTimestamp parameter. Messages are returned in
    * descending order (newest first).
    *
-   * @param taskId        The task UUID
+   * @param taskId The task UUID
    * @param lastTimestamp Optional ISO 8601 timestamp to get only newer messages
    * @return List of message data maps
    */
@@ -471,7 +510,7 @@ public class TaskService {
    * status to reflect the failure.
    *
    * @param paymentId The payment database ID
-   * @param reason    Failure reason from Stripe
+   * @param reason Failure reason from Stripe
    */
   @Transactional(rollbackFor = Exception.class)
   public void handlePaymentFailure(Long paymentId, String reason) {
@@ -547,7 +586,7 @@ public class TaskService {
    * <p>All operations are atomic - either all succeed or all rollback. This prevents orphaned
    * records and ensures data consistency.
    *
-   * @param request     Task request
+   * @param request Task request
    * @param currentUser Current user
    * @return Context with all prepared data
    */
@@ -640,7 +679,7 @@ public class TaskService {
    * <p>This method MUST be called outside of any transaction to avoid race conditions. The Python
    * service may update task status before Java transaction commits, causing data inconsistency.
    *
-   * @param task     The task to submit
+   * @param task The task to submit
    * @param analysts List of analysts to use in analysis
    */
   protected void submitToEngine(Task task, List<String> analysts) {
@@ -678,7 +717,7 @@ public class TaskService {
    *
    * <p>Constructs the API response including payment details, quota information, and billing data.
    *
-   * @param ctx         Submission context
+   * @param ctx Submission context
    * @param currentUser Current user (for fresh quota data)
    * @return Complete task response
    */
@@ -736,7 +775,7 @@ public class TaskService {
    * <p>Used when engine submission fails to ensure task status reflects the failure. Separate from
    * handleSubmissionFailure because it doesn't need to restore quota.
    *
-   * @param taskId       The task UUID
+   * @param taskId The task UUID
    * @param errorMessage Error description
    */
   protected void markTaskAsFailed(String taskId, String errorMessage) {
@@ -772,12 +811,23 @@ public class TaskService {
   /**
    * Convert Task entity to TaskResponse DTO.
    *
-   * <p>Handles payment intent refresh if client secret is missing for pending payments.
-   *
    * @param task The task entity
    * @return Task response DTO
    */
   private TaskResponse toTaskResponse(Task task) {
+    return toTaskResponse(task, false);
+  }
+
+  /**
+   * Convert Task entity to TaskResponse DTO.
+   *
+   * <p>Handles payment intent refresh if client secret is missing for pending payments.
+   *
+   * @param task The task entity
+   * @param refreshClientSecret Whether to refresh client secret from Stripe if missing
+   * @return Task response DTO
+   */
+  private TaskResponse toTaskResponse(Task task, boolean refreshClientSecret) {
     List<String> analysts =
         task.getSelectedAnalysts() != null
             ? fromJson(task.getSelectedAnalysts())
@@ -792,57 +842,113 @@ public class TaskService {
           };
     }
 
-    String paymentIntentId = null;
-    String paymentClientSecret = null;
+    // Parse pricing breakdown if available
+    TaskResponse.PricingBreakdown pricingBreakdown =
+        parsePricingBreakdown(
+            task.getPricingSnapshot(), task.getBillingAmount(), task.getBillingCurrency());
+
+    TaskResponse taskResponse =
+        TaskResponse.builder()
+            .id(task.getId())
+            .taskId(task.getTaskId())
+            .ticker(task.getTicker())
+            .analysisDate(task.getAnalysisDate().toString())
+            .selectedAnalysts(analysts)
+            .researchDepth(task.getResearchDepth())
+            .status(task.getStatus())
+            .finalDecision(task.getFinalDecision())
+            .errorMessage(task.getErrorMessage())
+            .createdAt(task.getCreatedAt())
+            .completedAt(task.getCompletedAt())
+            .toolCalls(task.getToolCalls())
+            .llmCalls(task.getLlmCalls())
+            .reports(task.getReports())
+            .paymentStatus(task.getPaymentStatus() != null ? task.getPaymentStatus().name() : null)
+            .billingAmount(task.getBillingAmount())
+            .billingCurrency(task.getBillingCurrency())
+            .freeTask(task.getIsFreeTask())
+            .paymentRequired(requiresPayment)
+            .pricingBreakdown(pricingBreakdown)
+            .build();
+    if (!requiresPayment) {
+      return taskResponse;
+    }
     TaskPayment payment =
         task.getPaymentId() != null ? taskPaymentService.getPaymentById(task.getPaymentId()) : null;
     if (payment != null) {
-      paymentIntentId = payment.getStripePaymentIntentId();
-      if (requiresPayment && paymentIntentId != null) {
-        paymentClientSecret = payment.getStripeClientSecret();
-        if ((paymentClientSecret == null || paymentClientSecret.isBlank())) {
+      String paymentIntentId = payment.getStripePaymentIntentId();
+      if (paymentIntentId != null) {
+        String paymentClientSecret = payment.getStripeClientSecret();
+        // Only refresh if explicitly requested and client secret is missing
+        if (refreshClientSecret && (paymentClientSecret == null || paymentClientSecret.isBlank())) {
           paymentClientSecret = stripeClient.refreshClientSecret(paymentIntentId);
           taskPaymentService.updatePaymentIntent(payment, paymentIntentId, paymentClientSecret);
         }
+        taskResponse.setPaymentIntentId(paymentIntentId);
+        taskResponse.setPaymentClientSecret(paymentClientSecret);
       }
     }
-
-    return TaskResponse.builder()
-        .id(task.getId())
-        .taskId(task.getTaskId())
-        .ticker(task.getTicker())
-        .analysisDate(task.getAnalysisDate().toString())
-        .selectedAnalysts(analysts)
-        .researchDepth(task.getResearchDepth())
-        .status(task.getStatus())
-        .finalDecision(task.getFinalDecision())
-        .errorMessage(task.getErrorMessage())
-        .createdAt(task.getCreatedAt())
-        .completedAt(task.getCompletedAt())
-        .toolCalls(task.getToolCalls())
-        .llmCalls(task.getLlmCalls())
-        .reports(task.getReports())
-        .paymentStatus(task.getPaymentStatus() != null ? task.getPaymentStatus().name() : null)
-        .billingAmount(task.getBillingAmount())
-        .billingCurrency(task.getBillingCurrency())
-        .freeTask(task.getIsFreeTask())
-        .paymentRequired(requiresPayment)
-        .paymentIntentId(paymentIntentId)
-        .paymentClientSecret(paymentClientSecret)
-        .build();
+    return taskResponse;
   }
 
-  /**
-   * Convert list of analysts to JSON string for database storage.
-   */
+  /** Convert list of analysts to JSON string for database storage. */
   private String toJson(List<String> list) {
     return JsonUtil.convertListToJson(list);
   }
 
-  /**
-   * Convert JSON string from database to list of analysts.
-   */
+  /** Convert JSON string from database to list of analysts. */
   private List<String> fromJson(String json) {
     return JsonUtil.convertJsonToList(json);
+  }
+
+  /**
+   * Parse pricing snapshot JSON and build PricingBreakdown for TaskResponse.
+   *
+   * <p>The pricing snapshot contains detailed billing information that was captured at task
+   * creation time. This method extracts that data and formats it for client display.
+   *
+   * @param pricingSnapshot JSON string containing pricing details
+   * @param billingAmount The final billing amount
+   * @param currency The billing currency
+   * @return PricingBreakdown object with detailed pricing information, or null if snapshot is empty
+   */
+  @SuppressWarnings("rawtypes")
+  private TaskResponse.PricingBreakdown parsePricingBreakdown(
+      String pricingSnapshot, BigDecimal billingAmount, String currency) {
+    if (pricingSnapshot == null || pricingSnapshot.isBlank()) {
+      return null;
+    }
+
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      Map snapshot = mapper.readValue(pricingSnapshot, Map.class);
+
+      BigDecimal basePrice = new BigDecimal(snapshot.get("basePrice").toString());
+      BigDecimal researchDepthFactor = new BigDecimal(snapshot.get("researchDepthFactor").toString());
+      BigDecimal analystFactor = new BigDecimal(snapshot.get("analystFactor").toString());
+
+      // Calculate multipliers from factors (factor = 1 + multiplier * (count - 1))
+      BigDecimal researchDepthMultiplier = researchDepthFactor.subtract(BigDecimal.ONE);
+      BigDecimal analystMultiplier = analystFactor.subtract(BigDecimal.ONE);
+
+      // Build calculation formula for UI display
+      String formula =
+          String.format(
+              "%s %s × %s (depth) × %s (analysts) = %s %s",
+              currency, basePrice, researchDepthFactor, analystFactor, currency, billingAmount);
+
+      return TaskResponse.PricingBreakdown.builder()
+          .basePrice(basePrice)
+          .researchDepthFactor(researchDepthFactor)
+          .analystFactor(analystFactor)
+          .researchDepthMultiplier(researchDepthMultiplier)
+          .analystMultiplier(analystMultiplier)
+          .calculationFormula(formula)
+          .build();
+    } catch (Exception e) {
+      log.warn("Failed to parse pricing snapshot: {}", e.getMessage());
+      return null;
+    }
   }
 }

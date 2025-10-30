@@ -571,6 +571,7 @@ const MessagePanel = ({
 
   return (
     <Card
+      className="message-panel"
       title={renderHeader()}
       style={{ display: 'flex', flexDirection: 'column' }}
       bodyStyle={{ flex: 1, overflow: 'hidden', padding: 0 }}

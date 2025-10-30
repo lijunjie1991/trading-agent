@@ -53,15 +53,31 @@ public class BillingController {
         var quote = pricingService.calculateQuote(strategy, request.getResearchDepth(), request.getSelectedAnalysts());
         int remaining = taskBillingService.getRemainingFreeQuota(currentUser);
 
+        // Build calculation formula for UI display
+        String formula = String.format("%s %s × %s (depth factor) × %s (analyst factor) = %s %s",
+                quote.getCurrency(),
+                quote.getBasePrice(),
+                quote.getResearchDepthFactor(),
+                quote.getAnalystFactor(),
+                quote.getCurrency(),
+                quote.getTotalAmount());
+
         TaskQuoteResponse response = TaskQuoteResponse.builder()
                 .totalAmount(quote.getTotalAmount())
                 .currency(quote.getCurrency())
                 .researchDepth(quote.getResearchDepth())
                 .analystCount(quote.getAnalystCount())
+                .selectedAnalysts(request.getSelectedAnalysts())
+                // Detailed pricing breakdown
+                .basePrice(quote.getBasePrice())
+                .researchDepthFactor(quote.getResearchDepthFactor())
+                .analystFactor(quote.getAnalystFactor())
+                // Free quota information
                 .freeQuotaRemaining(remaining)
                 .freeQuotaTotal(currentUser.getFreeQuotaTotal())
                 .eligibleForFreeQuota(remaining > 0)
-                .selectedAnalysts(request.getSelectedAnalysts())
+                // Calculation formula for display
+                .calculationFormula(formula)
                 .build();
 
         return Result.success(response);

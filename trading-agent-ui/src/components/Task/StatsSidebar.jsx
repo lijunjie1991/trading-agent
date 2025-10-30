@@ -1,10 +1,11 @@
-import { Card, Statistic, Row, Col, Typography, Space, Tag, Divider } from 'antd'
+import { Card, Statistic, Row, Col, Typography, Space, Tag, Divider, Popover } from 'antd'
 import {
   ToolOutlined,
   RobotOutlined,
   FileTextOutlined,
   ClockCircleOutlined,
   CalendarOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
 import { formatDateTime } from '../../utils/helpers'
@@ -23,6 +24,112 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
   const paymentStatus = (task?.paymentStatus || task?.payment_status || '').toUpperCase()
   const billingAmountValue = task?.billingAmount ?? task?.billing_amount
   const billingCurrency = task?.billingCurrency || task?.billing_currency || 'USD'
+  const hasPaidAmount = billingAmountValue != null && billingAmountValue > 0 && paymentStatus === 'PAID'
+
+  const formatBillingAmount = (amount, currency) => {
+    if (amount === undefined || amount === null) return null
+    const numeric = typeof amount === 'number' ? amount : Number(amount)
+    if (Number.isNaN(numeric)) return null
+    const formatter = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currency || 'USD',
+    })
+    return formatter.format(numeric)
+  }
+
+  const renderPricingDetails = () => {
+    const depthValue = task?.researchDepth ?? task?.research_depth
+    const depthOption = RESEARCH_DEPTH_OPTIONS.find((option) => option.value === depthValue)
+    const analysts = task?.selectedAnalysts ?? task?.selected_analysts ?? []
+    const pricingBreakdown = task?.pricingBreakdown
+
+    return (
+      <div style={{
+        maxWidth: 280,
+        padding: '16px',
+        background: 'rgba(17, 24, 39, 0.95)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: 12,
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+      }}>
+        <div style={{ marginBottom: 14 }}>
+          <Text strong style={{ fontSize: 14, color: '#f9fafb', letterSpacing: '-0.01em' }}>
+            💰 Pricing Breakdown
+          </Text>
+        </div>
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>Research Depth</Text>
+            <Text strong style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.9)' }}>
+              {depthOption?.label || 'N/A'}
+            </Text>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>Analysts Selected</Text>
+            <Text strong style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.9)' }}>
+              {analysts.length}
+            </Text>
+          </div>
+          {pricingBreakdown && (
+            <>
+              <div style={{
+                height: 1,
+                background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent)',
+                margin: '4px 0'
+              }} />
+              <div>
+                <Text style={{
+                  fontSize: 11,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  display: 'block',
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Calculation
+                </Text>
+                <div style={{
+                  fontSize: 11,
+                  color: '#a5b4fc',
+                  fontFamily: 'SF Mono, Monaco, Courier New, monospace',
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  lineHeight: 1.5
+                }}>
+                  {pricingBreakdown.calculationFormula ||
+                    `$${pricingBreakdown.basePrice} × ${pricingBreakdown.researchDepthFactor} × ${pricingBreakdown.analystFactor}`}
+                </div>
+              </div>
+            </>
+          )}
+          <div style={{
+            height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+            margin: '4px 0'
+          }} />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 0 4px'
+          }}>
+            <Text strong style={{ fontSize: 13, color: '#f9fafb' }}>Total Amount</Text>
+            <Text strong style={{
+              fontSize: 16,
+              color: '#a5b4fc',
+              letterSpacing: '-0.02em',
+              textShadow: '0 0 20px rgba(165, 180, 252, 0.3)'
+            }}>
+              {formatBillingAmount(billingAmountValue, billingCurrency)}
+            </Text>
+          </div>
+        </Space>
+      </div>
+    )
+  }
 
   useEffect(() => {
     const prevStats = prevStatsRef.current
@@ -54,11 +161,66 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
 
   return (
     <div style={{ position: 'sticky', top: 24 }}>
+      {/* Cost Display - Compact */}
+      {hasPaidAmount && (
+        <div style={{
+          background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginBottom: 12,
+          boxShadow: '0 2px 8px rgba(99, 102, 241, 0.15)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.8)', display: 'block', marginBottom: 2 }}>
+                Analysis Cost
+              </Text>
+              <Text strong style={{ fontSize: 18, color: '#fff', letterSpacing: '-0.02em' }}>
+                {formatBillingAmount(billingAmountValue, billingCurrency)}
+              </Text>
+            </div>
+            <Popover
+              content={renderPricingDetails()}
+              title={null}
+              trigger="click"
+              placement="bottomRight"
+              overlayInnerStyle={{
+                padding: 0,
+                background: 'transparent',
+                boxShadow: 'none'
+              }}
+            >
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+              }}
+              >
+                <QuestionCircleOutlined style={{ fontSize: 14, color: '#fff' }} />
+              </div>
+            </Popover>
+          </div>
+        </div>
+      )}
+
       {/* Stats Card */}
       <Card
+        className="stats-sidebar"
         title={<Text strong style={{ fontSize: 13 }}>Live Statistics</Text>}
         style={{ marginBottom: 12 }}
-        className={isProcessing ? 'shimmer' : ''}
+        className={isProcessing ? 'shimmer stats-sidebar' : 'stats-sidebar'}
         bodyStyle={{ padding: '12px' }}
       >
         <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -111,7 +273,7 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
       </Card>
 
       {/* Metadata Card */}
-      <Card title={<Text strong style={{ fontSize: 13 }}>Task Details</Text>} bodyStyle={{ padding: '12px' }}>
+      <Card className="stats-sidebar" title={<Text strong style={{ fontSize: 13 }}>Task Details</Text>} bodyStyle={{ padding: '12px' }}>
         <Space direction="vertical" size={8} style={{ width: '100%' }}>
           {/* Task ID */}
           <div>
@@ -223,6 +385,7 @@ const StatsSidebar = ({ task, stats, isProcessing, taskId }) => {
           </div>
         </Space>
       </Card>
+
     </div>
   )
 }

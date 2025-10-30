@@ -43,4 +43,20 @@ public class TaskResponse {
     private Integer freeQuotaTotal;
     private Integer freeQuotaRemaining;
     private Integer paidTaskCount;
+
+    // Pricing breakdown - parsed from pricingSnapshot if available
+    private PricingBreakdown pricingBreakdown;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PricingBreakdown {
+        private BigDecimal basePrice;
+        private BigDecimal researchDepthFactor;
+        private BigDecimal analystFactor;
+        private BigDecimal researchDepthMultiplier;
+        private BigDecimal analystMultiplier;
+        private String calculationFormula;
+    }
 }

@@ -67,10 +67,8 @@ const CompactHeader = ({ task, finalDecision, isProcessing }) => {
           position: 'absolute',
           inset: 0,
           background: isCompleted
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #48bb78 100%)'
-            : isFailed
-            ? 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #ef4444 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #10b981 100%)'
+            : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
           opacity: 0.95,
           transition: 'all 0.6s ease',
         }}

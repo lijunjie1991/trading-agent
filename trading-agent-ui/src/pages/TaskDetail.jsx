@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
-import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider, message } from 'antd'
-import { FileTextOutlined, CreditCardOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider, message, Popover } from 'antd'
+import { FileTextOutlined, CreditCardOutlined, ReloadOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
 import CompactHeader from '../components/Task/CompactHeader'
@@ -21,6 +21,7 @@ import {
 } from '../store/slices/taskSlice'
 import { RESEARCH_DEPTH_OPTIONS, PAYMENT_STATUS } from '../utils/constants'
 import './TaskDetail.css'
+import '../components/Task/TaskDetailEnhancements.css'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -266,6 +267,100 @@ const TaskDetail = () => {
     setRefreshingPaymentDetails(false)
   }
 
+  const renderPricingDetailsPopover = () => {
+    const depthValue = currentTask?.researchDepth ?? currentTask?.research_depth
+    const depthOption = RESEARCH_DEPTH_OPTIONS.find((option) => option.value === depthValue)
+    const analysts = currentTask?.selectedAnalysts ?? currentTask?.selected_analysts ?? []
+    const pricingBreakdown = currentTask?.pricingBreakdown
+
+    return (
+      <div style={{
+        maxWidth: 280,
+        padding: '16px',
+        background: 'rgba(17, 24, 39, 0.95)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: 12,
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+      }}>
+        <div style={{ marginBottom: 14 }}>
+          <Text strong style={{ fontSize: 14, color: '#f9fafb', letterSpacing: '-0.01em' }}>
+            💰 Pricing Breakdown
+          </Text>
+        </div>
+        <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>Research Depth</Text>
+            <Text strong style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.9)' }}>
+              {depthOption?.label || 'N/A'}
+            </Text>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.6)' }}>Analysts Selected</Text>
+            <Text strong style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.9)' }}>
+              {analysts.length}
+            </Text>
+          </div>
+          {pricingBreakdown && (
+            <>
+              <div style={{
+                height: 1,
+                background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent)',
+                margin: '4px 0'
+              }} />
+              <div>
+                <Text style={{
+                  fontSize: 11,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  display: 'block',
+                  marginBottom: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Calculation
+                </Text>
+                <div style={{
+                  fontSize: 11,
+                  color: '#fbbf24',
+                  fontFamily: 'SF Mono, Monaco, Courier New, monospace',
+                  background: 'rgba(251, 191, 36, 0.15)',
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(251, 191, 36, 0.2)',
+                  lineHeight: 1.5
+                }}>
+                  {pricingBreakdown.calculationFormula ||
+                    `USD ${pricingBreakdown.basePrice} × ${pricingBreakdown.researchDepthFactor} (depth) × ${pricingBreakdown.analystFactor} (analysts)`}
+                </div>
+              </div>
+            </>
+          )}
+          <div style={{
+            height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+            margin: '4px 0'
+          }} />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px 0 4px'
+          }}>
+            <Text strong style={{ fontSize: 13, color: '#f9fafb' }}>Total Amount</Text>
+            <Text strong style={{
+              fontSize: 16,
+              color: '#fbbf24',
+              letterSpacing: '-0.02em',
+              textShadow: '0 0 20px rgba(251, 191, 36, 0.3)'
+            }}>
+              {formatBillingAmount(billingAmount, billingCurrency)?.display}
+            </Text>
+          </div>
+        </Space>
+      </div>
+    )
+  }
+
   const handleRetryTask = async () => {
     try {
       message.loading({ content: 'Retrying task...', key: 'retry', duration: 0 })
@@ -314,95 +409,79 @@ const TaskDetail = () => {
   return (
     <div className="task-detail-page">
       {needsPayment && (
-        <div className={`payment-banner ${
-          paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED ? 'payment-banner--error' :
-          isPaymentExpired ? 'payment-banner--expired' : ''
+        <div className={`payment-banner-compact ${
+          paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED ? 'payment-banner-compact--error' :
+          isPaymentExpired ? 'payment-banner-compact--expired' : ''
         }`}>
-          <div className="payment-banner__content">
-            <div className="payment-banner__icon">
+          <div className="payment-banner-compact__main">
+            <div className="payment-banner-compact__icon">
               <CreditCardOutlined />
             </div>
-            <div className="payment-banner__copy">
-              <div className="payment-banner__title">
-                {paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED && 'Payment failed - please try again'}
-                {isPaymentExpired && 'Payment link expired - generate a new one'}
-                {paymentStatus === PAYMENT_STATUS.AWAITING_PAYMENT && !isPaymentExpired && 'Complete payment to begin your analysis'}
+            <div className="payment-banner-compact__content">
+              <div className="payment-banner-compact__text">
+                <span className="payment-banner-compact__label">
+                  {paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED && 'Payment Required'}
+                  {isPaymentExpired && 'Payment Expired'}
+                  {paymentStatus === PAYMENT_STATUS.AWAITING_PAYMENT && !isPaymentExpired && 'Payment Required'}
+                </span>
+                <span className="payment-banner-compact__amount">
+                  {formatBillingAmount(billingAmount, billingCurrency)?.display}
+                </span>
               </div>
-              {(() => {
-                const billingInfo = formatBillingAmount(billingAmount, billingCurrency)
-                return (
-                  <div className="payment-banner__meta">
-                    {billingInfo ? (
-                      <span className="payment-banner__amount">
-                        Amount due:&nbsp;
-                        <strong>{billingInfo.display}</strong>
-                        {billingBasis && (
-                          <span className="payment-banner__note">
-                            {billingBasis}
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="payment-banner__amount">
-                        Amount due:&nbsp;
-                        <strong>Pending calculation</strong>
-                      </span>
-                    )}
-                  </div>
-                )
-              })()}
-              {refreshingPaymentDetails && (
-                <div className="payment-banner__hint">
-                  <Spin size="small" />
-                  <span>
-                    {isPaymentExpired ? 'Generating new payment link...' : 'Refreshing payment details...'}
-                  </span>
+              <Popover
+                content={renderPricingDetailsPopover()}
+                title={null}
+                trigger="click"
+                placement="bottomLeft"
+                overlayInnerStyle={{
+                  padding: 0,
+                  background: 'transparent',
+                  boxShadow: 'none'
+                }}
+              >
+                <div className="payment-banner-compact__info-btn">
+                  <QuestionCircleOutlined />
                 </div>
-              )}
+              </Popover>
             </div>
-          </div>
-          <div className="payment-banner__actions">
             <Button
               type="primary"
-              size="large"
+              size="middle"
               onClick={handleOpenPaymentModal}
               loading={openingPaymentModal || refreshingPaymentDetails || submitting}
-              className="payment-banner__cta"
+              disabled={openingPaymentModal || refreshingPaymentDetails || submitting}
+              className="payment-banner-compact__cta"
             >
-              {paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED && 'Try Payment Again'}
-              {isPaymentExpired && 'Generate New Payment'}
-              {paymentStatus === PAYMENT_STATUS.AWAITING_PAYMENT && !isPaymentExpired && 'Complete Payment'}
+              {(openingPaymentModal || refreshingPaymentDetails || submitting) ? 'Loading...' :
+                paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED ? 'Retry Payment' :
+                isPaymentExpired ? 'New Payment' :
+                'Pay Now'
+              }
             </Button>
           </div>
         </div>
       )}
       {currentTask?.status === 'FAILED' && !needsPayment && (
-        <div className="payment-banner payment-banner--error">
-          <div className="payment-banner__content">
-            <div className="payment-banner__icon">
-              <ReloadOutlined />
+        <div className="error-banner">
+          <div className="error-banner__main">
+            <div className="error-banner__icon">⚠️</div>
+            <div className="error-banner__content">
+              <div className="error-banner__title">Task Execution Failed</div>
+              {currentTask?.errorMessage && (
+                <div className="error-banner__message">
+                  {currentTask.errorMessage.length > 200
+                    ? currentTask.errorMessage.substring(0, 200) + '...'
+                    : currentTask.errorMessage}
+                </div>
+              )}
             </div>
-            <div className="payment-banner__copy">
-              <div className="payment-banner__title">
-                Task execution failed
-              </div>
-              <div className="payment-banner__meta">
-                {currentTask?.errorMessage && (
-                  <span className="payment-banner__amount">
-                    Error: {currentTask.errorMessage}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="payment-banner__actions">
             <Button
               type="primary"
-              size="large"
+              size="middle"
               icon={<ReloadOutlined />}
               onClick={handleRetryTask}
               loading={submitting}
-              className="payment-banner__cta"
+              className="error-banner__button"
             >
               Retry Task
             </Button>

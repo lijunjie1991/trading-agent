@@ -8,13 +8,15 @@ import {
   Button,
   Card,
   Typography,
-  Spin,
   Divider,
-  Tag,
+  Row,
+  Col,
+  Space,
 } from 'antd'
 import { RocketOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
+import PricingCalculator from '../Pricing/PricingCalculator'
 import './TaskForm.css'
 
 const { Title, Text } = Typography
@@ -63,158 +65,25 @@ const TaskForm = ({
     })
   }
 
-  const renderBillingSummaryCard = () => {
-    if (billingLoading) {
-      return (
-        <div className="task-form__summary-card task-form__summary-card--loading">
-          <Spin size="small" />
-          <span>Loading billing overview...</span>
-        </div>
-      )
-    }
-
-    if (!billingSummary) {
-      return (
-        <div className="task-form__summary-card task-form__summary-card--placeholder">
-          <Text type="secondary">Billing summary is currently unavailable.</Text>
-        </div>
-      )
-    }
-
-    const remaining = Number(
-      billingSummary.freeQuotaRemaining ?? billingSummary.freeQuotaTotal ?? 0
-    )
-    const total = Number(billingSummary.freeQuotaTotal ?? 0)
-    const hasFreeCredits = remaining > 0
-
-    return (
-      <div
-        className={`task-form__summary-card ${
-          hasFreeCredits ? 'task-form__summary-card--available' : 'task-form__summary-card--exhausted'
-        }`}
-      >
-        <div className="task-form__summary-card-header">
-          <span
-            className={`task-form__summary-card-tag ${
-              hasFreeCredits ? 'task-form__summary-card-tag--success' : 'task-form__summary-card-tag--warning'
-            }`}
-          >
-            {hasFreeCredits ? 'Available' : 'Exhausted'}
-          </span>
-        </div>
-        <div className="task-form__summary-card-value">
-          {hasFreeCredits ? (
-            <>
-              <span className="task-form__summary-card-highlight">{remaining}</span>
-              <span className="task-form__summary-card-text"> credit{remaining === 1 ? '' : 's'} remaining</span>
-            </>
-          ) : (
-            'No credits left'
-          )}
-        </div>
-        <div className="task-form__summary-card-meta">
-          <span>Total credits: {total}</span>
-          {typeof billingSummary.paidTaskCount === 'number' && (
-            <span>Paid analyses: {billingSummary.paidTaskCount}</span>
-          )}
-        </div>
-        {hasFreeCredits && (
-          <div className="task-form__summary-card-tip">
-            This analysis may use your free credit
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const renderQuoteCard = () => {
-    if (quoteLoading) {
-      return (
-        <div className="task-form__summary-card task-form__summary-card--loading">
-          <Spin size="small" />
-          <span>Calculating estimated charge...</span>
-        </div>
-      )
-    }
-
-    if (!quote) {
-      return (
-        <div className="task-form__summary-card task-form__summary-card--placeholder">
-          <Text type="secondary">Adjust depth or analyst mix to preview pricing.</Text>
-        </div>
-      )
-    }
-
-    const isFree = Boolean(quote.eligibleForFreeQuota)
-    const numericAmount = Number(quote.totalAmount ?? 0)
-    const amountDisplay = Number.isFinite(numericAmount)
-      ? numericAmount.toFixed(2)
-      : quote.totalAmount
-    const currency = quote.currency || billingSummary?.currency || 'USD'
-
-    return (
-      <div
-        className={`task-form__summary-card task-form__summary-card--quote ${
-          isFree ? 'task-form__summary-card--quote-free' : ''
-        }`}
-      >
-        <div className="task-form__summary-card-header">
-          <div className="task-form__summary-card-title">
-            {isFree ? 'Free Analysis' : 'Estimated Charge'}
-          </div>
-        </div>
-        <div className="task-form__summary-card-amount">
-          {isFree ? (
-            <div className="task-form__free-badge">
-              <span className="task-form__free-badge-text">FREE</span>
-            </div>
-          ) : (
-            <>
-              <span className="task-form__amount-value">{amountDisplay}</span>
-              <span className="task-form__amount-currency">{currency}</span>
-            </>
-          )}
-        </div>
-        <Divider className="task-form__summary-card-divider" />
-        <div className="task-form__summary-card-details">
-          <Tag color={isFree ? 'green' : 'blue'}>
-            {quote.researchDepth} depth
-          </Tag>
-          <Tag color={isFree ? 'green' : 'blue'}>
-            {quote.analystCount} analyst{quote.analystCount !== 1 ? 's' : ''}
-          </Tag>
-        </div>
-        {isFree && (
-          <div className="task-form__summary-card-tip task-form__summary-card-tip--free">
-            One free credit will be used for this analysis
-          </div>
-        )}
-      </div>
-    )
-  }
 
   return (
-    <Card className="task-form">
-      <div className="task-form__hero">
-        <div className="task-form__hero-icon">
-          <RocketOutlined />
-        </div>
-        <div>
-          <Title level={3} className="task-form__hero-title">
-            New Market Analysis
-          </Title>
-          <Text type="secondary" className="task-form__hero-subtitle">
-            Configure your analysis parameters. Our AI agents will handle the research and provide actionable insights.
-          </Text>
-        </div>
-      </div>
+    <div className="task-form-wrapper">
+      <Card className="task-form">
+            <div className="task-form__hero">
+              <div className="task-form__hero-icon">
+                <RocketOutlined />
+              </div>
+              <div className="task-form__hero-content">
+                <Title level={2} className="task-form__hero-title">
+                  New Market Analysis
+                </Title>
+                <Text className="task-form__hero-subtitle">
+                  Configure your analysis parameters. Our AI agents will handle the research and provide actionable insights.
+                </Text>
+              </div>
+            </div>
 
-      <div className="task-form__summary-grid">
-        {renderBillingSummaryCard()}
-        {renderQuoteCard()}
-      </div>
-
-      <Divider className="task-form__divider" />
+            <Divider className="task-form__divider" />
 
       <Form
         form={form}
@@ -298,6 +167,16 @@ const TaskForm = ({
           <Checkbox.Group options={analystOptions} className="task-form__checkbox-group" />
         </Form.Item>
 
+        {/* Pricing Summary - Integrated */}
+        <div style={{ marginTop: 24, marginBottom: 0 }}>
+          <PricingCalculator
+            quote={quote}
+            quoteLoading={quoteLoading}
+            billingSummary={billingSummary}
+            billingLoading={billingLoading}
+          />
+        </div>
+
         <Form.Item className="task-form__cta">
           <Button
             type="primary"
@@ -322,9 +201,19 @@ const TaskForm = ({
               return 'Start Analysis'
             })()}
           </Button>
+
+          {/* Secure Payment Note */}
+          {quote && !quote.eligibleForFreeQuota && (
+            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+              <Text style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
+                💳 Secure payment via Stripe
+              </Text>
+            </div>
+          )}
         </Form.Item>
       </Form>
-    </Card>
+      </Card>
+    </div>
   )
 }
 

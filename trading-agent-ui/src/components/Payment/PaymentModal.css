@@ -11,9 +11,37 @@
 }
 
 .payment-modal .ant-modal-header {
-  background: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
-  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-bottom: none;
+  padding: 24px;
+}
+
+.payment-modal .ant-modal-close {
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.payment-modal .ant-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.payment-modal .ant-modal-close-x {
+  width: 40px;
+  height: 40px;
+  line-height: 40px;
+  font-size: 20px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .payment-modal .ant-modal-body {
@@ -28,31 +56,36 @@
 }
 
 .payment-modal-header__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 24px;
+  font-size: 28px;
   flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .payment-modal-header__title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #0f172a;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
   line-height: 1.3;
   margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .payment-modal-header__subtitle {
-  font-size: 14px;
-  color: #64748b;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.9);
   margin-top: 4px;
-  font-weight: 400;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* Payment Form Container */
