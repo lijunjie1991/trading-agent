@@ -80,6 +80,7 @@ class Task(Base):
     status = Column(String(20), default="PENDING", index=True)
     final_decision = Column(String(50))
     error_message = Column(Text)
+    raw_error_message = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     completed_at = Column(DateTime)
 

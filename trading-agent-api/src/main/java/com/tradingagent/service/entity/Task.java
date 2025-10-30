@@ -57,6 +57,9 @@ public class Task {
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(name = "raw_error_message", columnDefinition = "TEXT")
+    private String rawErrorMessage;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -13,7 +13,8 @@ def update_task_status(
     task_id: str,
     status: str,
     final_decision: Optional[str] = None,
-    error_message: Optional[str] = None
+    error_message: Optional[str] = None,
+    raw_error_message: Optional[str] = None
 ):
     """
     Update task status
@@ -22,7 +23,8 @@ def update_task_status(
         task_id: TaskUUID
         status: Status (PENDING, RUNNING, COMPLETED, FAILED)
         final_decision: Final decision
-        error_message: Error message
+        error_message: User-friendly error message
+        raw_error_message: Original error message for debugging
     """
     db = get_db_session()
     try:
@@ -45,6 +47,10 @@ def update_task_status(
         if error_message:
             task.error_message = error_message
             print(f"   Error message: {error_message[:100]}...")  # Print first100characters
+
+        if raw_error_message:
+            task.raw_error_message = raw_error_message
+            print(f"   Raw error message saved (length: {len(raw_error_message)})")
 
         # ifTaskcompleted or failed，Set completion time
         if status.upper() in ["COMPLETED", "FAILED"]:
@@ -188,31 +194,34 @@ def test_connection():
         return False
 
 
-def update_task_status_raw_sql(task_id: str, status: str, error_message: str = None):
+def update_task_status_raw_sql(task_id: str, status: str, error_message: str = None, raw_error_message: str = None):
     """
     Update task status using raw SQL (bypasses ORM, used as fallback when ORM fails)
 
     Args:
         task_id: Task UUID
         status: Status value
-        error_message: Error message (optional)
+        error_message: User-friendly error message (optional)
+        raw_error_message: Original error message for debugging (optional)
 
     Returns:
         bool: Success status
     """
     db = get_db_session()
     try:
-        if error_message:
+        if error_message or raw_error_message:
             sql = text("""
                 UPDATE tasks
                 SET status = :status,
                     error_message = :error_message,
+                    raw_error_message = :raw_error_message,
                     completed_at = NOW()
                 WHERE task_id = :task_id
             """)
             db.execute(sql, {
                 'status': status.upper(),
                 'error_message': error_message,
+                'raw_error_message': raw_error_message,
                 'task_id': task_id
             })
         else:

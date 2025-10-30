@@ -470,8 +470,9 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
         # Update task status to RUNNING
         if not update_task_status(task_id, "RUNNING"):
             error_msg = "Failed to initialize task - database error or task not found"
+            user_friendly_msg = "Failed to start analysis. Please try again or contact support."
             print(f"❌ Task {task_id[:8]} - ORM update failed, trying raw SQL fallback")
-            update_task_status_raw_sql(task_id, "FAILED", error_message=error_msg)
+            update_task_status_raw_sql(task_id, "FAILED", error_message=user_friendly_msg, raw_error_message=error_msg)
             return
 
         # Configure API keys and save originals
@@ -778,8 +779,21 @@ def run_analysis_task_sync(task_id: str, request: AnalysisRequest) -> None:
         import traceback
         traceback.print_exc()
 
-        # Update task status to failed
-        if not update_task_status(task_id, "FAILED", error_message=str(e)):
+        # Prepare error messages
+        raw_error = str(e)
+        error_trace = traceback.format_exc()
+        full_raw_error = f"{raw_error}\n\nFull traceback:\n{error_trace}"
+
+        # User-friendly error message
+        user_friendly_error = "Analysis failed. Our team has been notified and is investigating the issue. Please try again later or contact support if the problem persists."
+
+        # Update task status to failed with both error messages
+        if not update_task_status(
+            task_id,
+            "FAILED",
+            error_message=user_friendly_error,
+            raw_error_message=full_raw_error
+        ):
             print(f"❌ Failed to update task {task_id[:8]} status to FAILED")
 
     finally:

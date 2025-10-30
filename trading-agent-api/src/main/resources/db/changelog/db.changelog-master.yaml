@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/v1.2.1-billing-hotfix.xml
   - include:
       file: db/changelog/changes/v1.3.0-billing-payment-intents.xml
+  - include:
+      file: db/changelog/changes/v1.4.0-add-raw-error-message.xml

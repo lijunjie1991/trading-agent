@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- ChangeSet 12: Add raw_error_message column to tasks table -->
+    <changeSet id="12-add-raw-error-message-column" author="JunjieLi">
+        <comment>Add raw_error_message column to tasks table for storing original error details while error_message shows user-friendly message</comment>
+
+        <sql>
+            ALTER TABLE tasks
+            ADD COLUMN raw_error_message TEXT NULL;
+        </sql>
+
+        <rollback>
+            ALTER TABLE tasks
+            DROP COLUMN raw_error_message;
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
