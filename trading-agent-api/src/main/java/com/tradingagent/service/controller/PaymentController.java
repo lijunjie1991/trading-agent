@@ -5,12 +5,8 @@ import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.StripeObject;
 import com.tradingagent.service.common.Result;
-import com.tradingagent.service.common.ResultCode;
 import com.tradingagent.service.dto.TaskResponse;
-import com.tradingagent.service.entity.Task;
 import com.tradingagent.service.entity.TaskPayment;
-import com.tradingagent.service.exception.BusinessException;
-import com.tradingagent.service.repository.TaskRepository;
 import com.tradingagent.service.service.StripeClient;
 import com.tradingagent.service.service.TaskPaymentService;
 import com.tradingagent.service.service.TaskService;
@@ -32,7 +28,6 @@ public class PaymentController {
 
   private final StripeClient stripeClient;
   private final TaskPaymentService taskPaymentService;
-  private final TaskRepository taskRepository;
   private final TaskService taskService;
   private final ObjectMapper objectMapper;
 
@@ -79,14 +74,14 @@ public class PaymentController {
         return;
       }
 
+      // Update payment intent ID if needed
       taskPaymentService.updatePaymentIntent(payment, intent.getId(), intent.getClientSecret());
+
+      // Coordinate payment failure through TaskService
       String reason = intent.getLastPaymentError() != null
           ? intent.getLastPaymentError().getMessage()
           : "Payment failed";
-      taskPaymentService.markFailed(payment, reason);
-      Task task = taskRepository.findById(payment.getTaskId())
-              .orElseThrow(() -> new BusinessException(ResultCode.TASK_NOT_FOUND, "Task not found"));
-      log.info("Marked payment {} as failed for task {}: {}", payment.getId(), task.getTaskId(), reason);
+      taskService.handlePaymentFailure(payment.getId(), reason);
     } catch (Exception ex) {
       log.error("Error handling payment_intent.payment_failed event: {}", ex.getMessage());
       throw ex;
@@ -112,15 +107,13 @@ public class PaymentController {
         return;
       }
 
+      // Update payment intent ID if needed
       taskPaymentService.updatePaymentIntent(payment, intent.getId(), intent.getClientSecret());
-      taskPaymentService.markPaid(payment);
 
-      Task task = taskRepository.findById(payment.getTaskId())
-              .orElseThrow(() -> new BusinessException(ResultCode.TASK_NOT_FOUND, "Task not found"));
-      boolean dispatched = taskService.dispatchPaidTask(task);
+      // Coordinate payment success through TaskService
+      boolean dispatched = taskService.handlePaymentSuccess(payment.getId());
       if (!dispatched) {
-        log.error("Failed to dispatch task {} to analysis engine after payment completion",
-            task.getTaskId());
+        log.error("Failed to dispatch task to analysis engine after payment completion");
       }
     } catch (Exception ex) {
       log.error("Error handling payment_intent.succeeded event: {}", ex.getMessage());
@@ -147,11 +140,11 @@ public class PaymentController {
         return;
       }
 
+      // Update payment intent ID if needed
       taskPaymentService.updatePaymentIntent(payment, intent.getId(), intent.getClientSecret());
-      taskPaymentService.markExpired(payment);
-      Task task = taskRepository.findById(payment.getTaskId())
-              .orElseThrow(() -> new BusinessException(ResultCode.TASK_NOT_FOUND, "Task not found"));
-      log.info("Marked payment {} as canceled for task {}", payment.getId(), task.getTaskId());
+
+      // Coordinate payment expiration through TaskService
+      taskService.handlePaymentExpired(payment.getId());
     } catch (Exception ex) {
       log.error("Error handling payment_intent.canceled event: {}", ex.getMessage());
       throw ex;

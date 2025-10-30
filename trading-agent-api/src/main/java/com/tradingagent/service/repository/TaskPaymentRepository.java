@@ -13,6 +13,8 @@ public interface TaskPaymentRepository extends JpaRepository<TaskPayment, Long> 
     @Query("SELECT tp FROM TaskPayment tp JOIN Task t ON tp.taskId = t.id WHERE t.taskId = :taskId")
     TaskPayment findByTaskTaskId(@Param("taskId") String taskId);
 
+    TaskPayment findByTaskId(Long taskId);
+
     TaskPayment findByStripePaymentIntentId(String paymentIntentId);
 
     Long countByUserIdAndStatus(Long userId, PaymentStatus status);
