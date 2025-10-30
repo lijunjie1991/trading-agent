@@ -77,4 +77,10 @@ public class TaskController {
         List<Map<String, Object>> messages = taskService.getTaskMessages(taskId, lastTimestamp);
         return ResponseEntity.ok(Result.success(messages));
     }
+
+    @PostMapping("/{taskId}/retry")
+    public ResponseEntity<Result<TaskResponse>> retryTask(@PathVariable String taskId) {
+        TaskResponse response = taskService.retryTask(taskId);
+        return ResponseEntity.ok(Result.success(response, "Task retry initiated successfully"));
+    }
 }

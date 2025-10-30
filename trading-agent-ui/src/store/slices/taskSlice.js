@@ -101,6 +101,18 @@ export const retryTaskPayment = createAsyncThunk(
   }
 )
 
+export const retryTask = createAsyncThunk(
+  'task/retryTask',
+  async (taskId, { rejectWithValue }) => {
+    try {
+      const data = await taskService.retryTask(taskId)
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
 export const fetchBillingSummary = createAsyncThunk(
   'task/fetchBillingSummary',
   async (_, { rejectWithValue }) => {
@@ -347,6 +359,32 @@ const taskSlice = createSlice({
       state.currentTask = payload
     })
     builder.addCase(retryTaskPayment.rejected, (state, action) => {
+      state.submitting = false
+      state.error = action.payload
+    })
+
+    // Retry task
+    builder.addCase(retryTask.pending, (state) => {
+      state.submitting = true
+      state.error = null
+    })
+    builder.addCase(retryTask.fulfilled, (state, action) => {
+      state.submitting = false
+      state.currentTask = action.payload
+      state.error = null
+      // Reset messages and state for the retried task
+      state.messages = []
+      state.lastTimestamp = null
+      state.agentStatuses = initializeAgentStatuses()
+      state.stats = {
+        toolCalls: 0,
+        llmCalls: 0,
+        reports: 0,
+      }
+      state.currentReport = null
+      state.finalDecision = null
+    })
+    builder.addCase(retryTask.rejected, (state, action) => {
       state.submitting = false
       state.error = action.payload
     })

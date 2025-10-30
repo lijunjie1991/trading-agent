@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector, useStore } from 'react-redux'
 import { Card, Row, Col, Button, Typography, Space, Modal, Tabs, Empty, Spin, Divider, message } from 'antd'
-import { FileTextOutlined, CreditCardOutlined } from '@ant-design/icons'
+import { FileTextOutlined, CreditCardOutlined, ReloadOutlined } from '@ant-design/icons'
 import { marked } from 'marked'
 import MessagePanel from '../components/Task/MessagePanel'
 import CompactHeader from '../components/Task/CompactHeader'
@@ -16,6 +16,7 @@ import {
   fetchTask,
   fetchTaskMessages,
   retryTaskPayment,
+  retryTask,
   clearPaymentState,
 } from '../store/slices/taskSlice'
 import { RESEARCH_DEPTH_OPTIONS, PAYMENT_STATUS } from '../utils/constants'
@@ -265,6 +266,19 @@ const TaskDetail = () => {
     setRefreshingPaymentDetails(false)
   }
 
+  const handleRetryTask = async () => {
+    try {
+      message.loading({ content: 'Retrying task...', key: 'retry', duration: 0 })
+      await dispatch(retryTask(taskId)).unwrap()
+      message.success({ content: 'Task retry initiated successfully!', key: 'retry', duration: 2 })
+      // Restart polling for the retried task
+      startPolling()
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to retry task'
+      message.error({ content: errorMessage, key: 'retry', duration: 3 })
+    }
+  }
+
   const renderReport = (report) => {
     const reportTitles = {
       market_report: 'Market Analysis',
@@ -358,6 +372,39 @@ const TaskDetail = () => {
               {paymentStatus === PAYMENT_STATUS.PAYMENT_FAILED && 'Try Payment Again'}
               {isPaymentExpired && 'Generate New Payment'}
               {paymentStatus === PAYMENT_STATUS.AWAITING_PAYMENT && !isPaymentExpired && 'Complete Payment'}
+            </Button>
+          </div>
+        </div>
+      )}
+      {currentTask?.status === 'FAILED' && !needsPayment && (
+        <div className="payment-banner payment-banner--error">
+          <div className="payment-banner__content">
+            <div className="payment-banner__icon">
+              <ReloadOutlined />
+            </div>
+            <div className="payment-banner__copy">
+              <div className="payment-banner__title">
+                Task execution failed
+              </div>
+              <div className="payment-banner__meta">
+                {currentTask?.errorMessage && (
+                  <span className="payment-banner__amount">
+                    Error: {currentTask.errorMessage}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="payment-banner__actions">
+            <Button
+              type="primary"
+              size="large"
+              icon={<ReloadOutlined />}
+              onClick={handleRetryTask}
+              loading={submitting}
+              className="payment-banner__cta"
+            >
+              Retry Task
             </Button>
           </div>
         </div>

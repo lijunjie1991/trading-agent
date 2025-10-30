@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   LIST_TASKS: '/api/v1/tasks',
   GET_TASK_REPORTS: '/api/v1/tasks/:taskId/reports',
   CANCEL_TASK: '/api/v1/tasks/:taskId/cancel',
+  RETRY_TASK: '/api/v1/tasks/:taskId/retry',
 
   // Billing
   BILLING_SUMMARY: '/api/v1/billing/summary',

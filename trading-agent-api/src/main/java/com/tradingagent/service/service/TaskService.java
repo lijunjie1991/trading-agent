@@ -182,6 +182,56 @@ public class TaskService {
     return response;
   }
 
+  @Transactional(rollbackFor = Exception.class)
+  public TaskResponse retryTask(String taskId) {
+    User currentUser = authService.getCurrentUser();
+    Task task = taskRepository.findByTaskId(taskId);
+    if (task == null) {
+      throw new ResourceNotFoundException(ResultCode.TASK_NOT_FOUND, "Task not found: " + taskId);
+    }
+
+    if (!task.getUserId().equals(currentUser.getId())) {
+      throw new UnauthorizedException(ResultCode.ACCESS_DENIED);
+    }
+
+    if (!"FAILED".equals(task.getStatus())) {
+      throw new BusinessException(ResultCode.INVALID_PARAMETER, "Only failed tasks can be retried");
+    }
+
+    // Reset task status and error messages
+    task.setStatus("PENDING");
+    task.setErrorMessage(null);
+    task.setRawErrorMessage(null);
+    task.setCompletedAt(null);
+    task.setFinalDecision(null);
+
+    // Reset statistics
+    task.setToolCalls(0);
+    task.setLlmCalls(0);
+    task.setReports(0);
+
+    taskRepository.save(task);
+    log.info("Task {} marked for retry", taskId);
+
+    // Check if this is a free task or already paid
+    boolean shouldSubmit = task.getIsFreeTask() || PaymentStatus.PAID.equals(task.getPaymentStatus());
+
+    if (shouldSubmit) {
+      try {
+        submitTaskToEngine(task);
+        log.info("Task {} resubmitted to engine", taskId);
+      } catch (BusinessException e) {
+        task.setStatus("FAILED");
+        task.setErrorMessage(e.getMessage());
+        task.setCompletedAt(LocalDateTime.now());
+        taskRepository.save(task);
+        throw e;
+      }
+    }
+
+    return toTaskResponse(task);
+  }
+
   /**
    * Get user tasks with pagination and filtering
    */

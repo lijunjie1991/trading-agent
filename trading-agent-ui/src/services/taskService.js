@@ -80,6 +80,15 @@ class TaskService {
     const response = await api.post(url)
     return response.data.data || response.data
   }
+
+  /**
+   * Retry a failed task
+   */
+  async retryTask(taskId) {
+    const url = parseApiUrl(API_ENDPOINTS.RETRY_TASK, { taskId })
+    const response = await api.post(url)
+    return response.data.data || response.data
+  }
 }
 
 export default new TaskService()
