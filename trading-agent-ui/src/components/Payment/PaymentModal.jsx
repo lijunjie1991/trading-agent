@@ -3,6 +3,7 @@ import { Modal, Alert, Button, Typography, Space, Divider, Tag } from 'antd'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { CheckCircleOutlined, LoadingOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { getStripe } from '../../utils/stripe'
+import { RESEARCH_DEPTH_OPTIONS } from '../../utils/constants'
 import './PaymentModal.css'
 
 const { Text, Title } = Typography
@@ -20,6 +21,15 @@ const formatAmount = (amount, currency) => {
     currency: currency || 'USD',
   })
   return formatter.format(numericAmount)
+}
+
+const getResearchDepthLabel = (depth) => {
+  if (depth === null || depth === undefined) {
+    return ''
+  }
+  const numericDepth = typeof depth === 'number' ? depth : Number(depth)
+  const option = RESEARCH_DEPTH_OPTIONS.find(opt => opt.value === numericDepth)
+  return option ? option.label : depth
 }
 
 const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel, researchDepth, analystCount }) => {
@@ -159,44 +169,52 @@ const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel, researchDe
 
   return (
     <form onSubmit={handleSubmit} className="payment-form">
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        {/* Payment Breakdown */}
-        <div className="payment-breakdown">
-          <div className="payment-breakdown__header">
-            <Title level={5} style={{ margin: 0 }}>Payment Summary</Title>
-            <Tag color="blue">Secure Payment</Tag>
+      <div className="payment-form__content">
+        {/* Payment Summary Section */}
+        <div className="payment-summary">
+          <div className="payment-summary__header">
+            <Text className="payment-summary__title">Payment Summary</Text>
+            <Tag color="blue" className="payment-summary__badge">Secure Payment</Tag>
           </div>
-          <Divider style={{ margin: '12px 0' }} />
-          <div className="payment-breakdown__items">
+
+          <div className="payment-summary__details">
             {researchDepth && (
-              <div className="payment-breakdown__item">
-                <Text type="secondary">Research Depth</Text>
-                <Text strong>{researchDepth}</Text>
+              <div className="payment-detail-row">
+                <Text className="payment-detail-row__label">Research Depth</Text>
+                <Text className="payment-detail-row__value">{getResearchDepthLabel(researchDepth)}</Text>
               </div>
             )}
             {analystCount !== undefined && analystCount !== null && (
-              <div className="payment-breakdown__item">
-                <Text type="secondary">Analysts Selected</Text>
-                <Text strong>{analystCount} analyst{analystCount !== 1 ? 's' : ''}</Text>
+              <div className="payment-detail-row">
+                <Text className="payment-detail-row__label">Analysts Selected</Text>
+                <Text className="payment-detail-row__value">{analystCount} analyst{analystCount !== 1 ? 's' : ''}</Text>
               </div>
             )}
-            <Divider style={{ margin: '8px 0' }} />
-            <div className="payment-breakdown__item payment-breakdown__total">
-              <Text strong style={{ fontSize: '16px' }}>Total Amount</Text>
-              <Text strong style={{ fontSize: '20px', color: '#4338ca' }}>
-                {amount !== null && amount !== undefined
-                  ? formatAmount(amount, currency)
-                  : 'Calculating...'}
-              </Text>
-            </div>
+          </div>
+
+          <div className="payment-summary__total">
+            <Text className="payment-total__label">Total Amount</Text>
+            <Text className="payment-total__amount">
+              {amount !== null && amount !== undefined
+                ? formatAmount(amount, currency)
+                : 'Calculating...'}
+            </Text>
           </div>
         </div>
 
-        <PaymentElement options={{ layout: 'tabs' }} />
+        {/* Payment Method Section */}
+        <div className="payment-method-section">
+          <PaymentElement options={{ layout: 'tabs' }} />
+        </div>
 
         {/* Payment Progress Steps */}
-        {submitting && renderPaymentSteps()}
+        {submitting && (
+          <div className="payment-progress-section">
+            {renderPaymentSteps()}
+          </div>
+        )}
 
+        {/* Error Message */}
         {errorMessage && (
           <Alert
             type="error"
@@ -218,6 +236,7 @@ const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel, researchDe
           />
         )}
 
+        {/* Action Buttons */}
         <div className="payment-actions">
           <Button
             type="primary"
@@ -226,7 +245,7 @@ const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel, researchDe
             disabled={!stripe || !elements}
             size="large"
             block
-            className="payment-confirm-button"
+            className="payment-btn payment-btn--confirm"
           >
             {submitting ? 'Processing...' : 'Confirm Payment'}
           </Button>
@@ -235,12 +254,12 @@ const PaymentForm = ({ amount, currency, taskId, onSuccess, onCancel, researchDe
             disabled={submitting}
             size="large"
             block
-            className="payment-cancel-button"
+            className="payment-btn payment-btn--cancel"
           >
             Cancel
           </Button>
         </div>
-      </Space>
+      </div>
     </form>
   )
 }
@@ -291,9 +310,9 @@ const PaymentModal = ({
             <CheckCircleOutlined />
           </div>
           <div>
-            <div className="payment-modal-header__title">Complete Your Payment</div>
+            <div className="payment-modal-header__title">Analysis Created</div>
             <div className="payment-modal-header__subtitle">
-              Secure checkout powered by Stripe
+              Complete Payment to Start
             </div>
           </div>
         </div>

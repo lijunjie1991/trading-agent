@@ -20,8 +20,8 @@ import com.tradingagent.service.entity.TaskMessage;
 import com.tradingagent.service.repository.ReportRepository;
 import com.tradingagent.service.repository.TaskMessageRepository;
 import com.tradingagent.service.repository.TaskRepository;
+import jakarta.annotation.Resource;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -59,19 +59,29 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TaskService {
 
-  private final TaskRepository taskRepository;
-  private final ReportRepository reportRepository;
-  private final TaskMessageRepository taskMessageRepository;
-  private final PythonServiceClient pythonServiceClient;
-  private final AuthService authService;
-  private final PricingService pricingService;
-  private final TaskBillingService taskBillingService;
-  private final TaskPaymentService taskPaymentService;
-  private final StripeClient stripeClient;
-  @Lazy private final TaskService self;
+  @Resource
+  private TaskRepository taskRepository;
+  @Resource
+  private ReportRepository reportRepository;
+  @Resource
+  private TaskMessageRepository taskMessageRepository;
+  @Resource
+  private PythonServiceClient pythonServiceClient;
+  @Resource
+  private AuthService authService;
+  @Resource
+  private PricingService pricingService;
+  @Resource
+  private TaskBillingService taskBillingService;
+  @Resource
+  private TaskPaymentService taskPaymentService;
+  @Resource
+  private StripeClient stripeClient;
+  @Resource
+  @Lazy
+  private TaskService self;
 
   // ==================== Public API Methods ====================
 
@@ -361,7 +371,7 @@ public class TaskService {
    * <p>Supports incremental updates by providing lastTimestamp parameter. Messages are returned in
    * descending order (newest first).
    *
-   * @param taskId The task UUID
+   * @param taskId        The task UUID
    * @param lastTimestamp Optional ISO 8601 timestamp to get only newer messages
    * @return List of message data maps
    */
@@ -461,7 +471,7 @@ public class TaskService {
    * status to reflect the failure.
    *
    * @param paymentId The payment database ID
-   * @param reason Failure reason from Stripe
+   * @param reason    Failure reason from Stripe
    */
   @Transactional(rollbackFor = Exception.class)
   public void handlePaymentFailure(Long paymentId, String reason) {
@@ -537,7 +547,7 @@ public class TaskService {
    * <p>All operations are atomic - either all succeed or all rollback. This prevents orphaned
    * records and ensures data consistency.
    *
-   * @param request Task request
+   * @param request     Task request
    * @param currentUser Current user
    * @return Context with all prepared data
    */
@@ -630,7 +640,7 @@ public class TaskService {
    * <p>This method MUST be called outside of any transaction to avoid race conditions. The Python
    * service may update task status before Java transaction commits, causing data inconsistency.
    *
-   * @param task The task to submit
+   * @param task     The task to submit
    * @param analysts List of analysts to use in analysis
    */
   protected void submitToEngine(Task task, List<String> analysts) {
@@ -668,7 +678,7 @@ public class TaskService {
    *
    * <p>Constructs the API response including payment details, quota information, and billing data.
    *
-   * @param ctx Submission context
+   * @param ctx         Submission context
    * @param currentUser Current user (for fresh quota data)
    * @return Complete task response
    */
@@ -726,7 +736,7 @@ public class TaskService {
    * <p>Used when engine submission fails to ensure task status reflects the failure. Separate from
    * handleSubmissionFailure because it doesn't need to restore quota.
    *
-   * @param taskId The task UUID
+   * @param taskId       The task UUID
    * @param errorMessage Error description
    */
   protected void markTaskAsFailed(String taskId, String errorMessage) {
@@ -822,12 +832,16 @@ public class TaskService {
         .build();
   }
 
-  /** Convert list of analysts to JSON string for database storage. */
+  /**
+   * Convert list of analysts to JSON string for database storage.
+   */
   private String toJson(List<String> list) {
     return JsonUtil.convertListToJson(list);
   }
 
-  /** Convert JSON string from database to list of analysts. */
+  /**
+   * Convert JSON string from database to list of analysts.
+   */
   private List<String> fromJson(String json) {
     return JsonUtil.convertJsonToList(json);
   }

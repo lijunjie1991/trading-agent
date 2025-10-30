@@ -308,7 +308,19 @@ const TaskForm = ({
             icon={<RocketOutlined />}
             className="task-form__cta-button"
           >
-            {loading ? 'Starting analysis...' : 'Start Analysis'}
+            {loading ? 'Starting analysis...' : (() => {
+              // If quote is available and not free, show "Create Analysis & Pay" with amount
+              if (quote && !quote.eligibleForFreeQuota) {
+                const numericAmount = Number(quote.totalAmount ?? 0)
+                const amountDisplay = Number.isFinite(numericAmount)
+                  ? numericAmount.toFixed(2)
+                  : quote.totalAmount
+                const currency = quote.currency || billingSummary?.currency || 'USD'
+                return `Create Analysis & Pay ${amountDisplay} ${currency}`
+              }
+              // Otherwise, just "Start Analysis"
+              return 'Start Analysis'
+            })()}
           </Button>
         </Form.Item>
       </Form>
