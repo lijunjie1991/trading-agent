@@ -466,7 +466,6 @@ public class TaskService {
    * @param paymentId The payment database ID
    * @return true if dispatch succeeded, false otherwise
    */
-  @Transactional(rollbackFor = Exception.class)
   public boolean handlePaymentSuccess(Long paymentId) {
     TaskPayment payment = taskPaymentService.getPaymentById(paymentId);
     if (payment == null) {
